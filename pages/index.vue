@@ -28,12 +28,18 @@
       </div>
     </main>
 
-    <AuthModal v-if="showAuthModal" @close="showAuthModal = false" />
+    <AuthModal v-if="showAuthModal" @close="showAuthModal = false" @auth-success="handleAuthSuccess" />
   </div>
 </template>
 
 <script setup lang="ts">
+const router = useRouter()
 const showAuthModal = ref(false)
+
+const handleAuthSuccess = () => {
+  showAuthModal.value = false
+  router.push('/chat')
+}
 </script>
 
 <style scoped>

@@ -62,10 +62,7 @@
 </template>
 
 <script setup lang="ts">
-const { $supabase } = useNuxtApp()
-const router = useRouter()
-
-const emit = defineEmits(['close'])
+const emit = defineEmits(['close', 'auth-success'])
 
 const email = ref('')
 const password = ref('')
@@ -83,36 +80,15 @@ const handleAuth = async () => {
   error.value = ''
 
   try {
+    await new Promise(resolve => setTimeout(resolve, 500))
+
     if (isLogin.value) {
-      const { data, error: authError } = await $supabase.auth.signInWithPassword({
-        email: email.value,
-        password: password.value,
-      })
-
-      if (authError) throw authError
-
-      if (data.user) {
-        await router.push('/chat')
-        emit('close')
-      }
+      console.log('Login:', email.value)
     } else {
-      const { data, error: authError } = await $supabase.auth.signUp({
-        email: email.value,
-        password: password.value,
-      })
-
-      if (authError) throw authError
-
-      if (data.user) {
-        await $supabase.from('profiles').insert({
-          id: data.user.id,
-          email: data.user.email,
-        })
-
-        await router.push('/chat')
-        emit('close')
-      }
+      console.log('Sign up:', email.value)
     }
+
+    emit('auth-success')
   } catch (err: any) {
     error.value = err.message || 'An error occurred'
   } finally {

@@ -53,8 +53,6 @@
 interface Session {
   id: string
   title: string
-  created_at: string
-  updated_at: string
 }
 
 defineProps<{
@@ -64,11 +62,9 @@ defineProps<{
 
 defineEmits(['new-chat', 'select-session', 'delete-session'])
 
-const { $supabase } = useNuxtApp()
 const router = useRouter()
 
-const handleLogout = async () => {
-  await $supabase.auth.signOut()
+const handleLogout = () => {
   router.push('/')
 }
 </script>

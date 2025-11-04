@@ -65,76 +65,72 @@
 </template>
 
 <script setup lang="ts">
-definePageMeta({
-  middleware: 'auth'
-})
+interface Message {
+  id: string
+  role: 'user' | 'assistant'
+  content: string
+  timestamp: number
+}
 
-const { $supabase } = useNuxtApp()
+interface ChatSession {
+  id: string
+  title: string
+  messages: Message[]
+  createdAt: number
+  updatedAt: number
+}
 
-const chatSessions = ref<any[]>([])
+const chatSessions = ref<ChatSession[]>([])
 const currentSessionId = ref<string | null>(null)
-const messages = ref<any[]>([])
+const messages = ref<Message[]>([])
 const inputMessage = ref('')
 const showFileUpload = ref(false)
 
-onMounted(async () => {
-  await loadChatSessions()
+onMounted(() => {
+  loadSessions()
 })
 
-const loadChatSessions = async () => {
-  const { data: sessions } = await $supabase
-    .from('chat_sessions')
-    .select('*')
-    .order('updated_at', { ascending: false })
-
-  chatSessions.value = sessions || []
-
-  if (sessions && sessions.length > 0 && !currentSessionId.value) {
-    await selectSession(sessions[0].id)
+const loadSessions = () => {
+  const stored = localStorage.getItem('chat-sessions')
+  if (stored) {
+    chatSessions.value = JSON.parse(stored)
+    if (chatSessions.value.length > 0) {
+      selectSession(chatSessions.value[0].id)
+    }
   }
 }
 
-const createNewChat = async () => {
-  const { data: { user } } = await $supabase.auth.getUser()
-
-  const { data: newSession } = await $supabase
-    .from('chat_sessions')
-    .insert({
-      user_id: user?.id,
-      title: 'New Chat'
-    })
-    .select()
-    .single()
-
-  if (newSession) {
-    chatSessions.value.unshift(newSession)
-    await selectSession(newSession.id)
-  }
+const saveSessions = () => {
+  localStorage.setItem('chat-sessions', JSON.stringify(chatSessions.value))
 }
 
-const selectSession = async (sessionId: string) => {
+const createNewChat = () => {
+  const newSession: ChatSession = {
+    id: Date.now().toString(),
+    title: 'New Chat',
+    messages: [],
+    createdAt: Date.now(),
+    updatedAt: Date.now()
+  }
+
+  chatSessions.value.unshift(newSession)
+  saveSessions()
+  selectSession(newSession.id)
+}
+
+const selectSession = (sessionId: string) => {
   currentSessionId.value = sessionId
-
-  const { data: sessionMessages } = await $supabase
-    .from('chat_messages')
-    .select('*')
-    .eq('session_id', sessionId)
-    .order('created_at', { ascending: true })
-
-  messages.value = sessionMessages || []
+  const session = chatSessions.value.find(s => s.id === sessionId)
+  messages.value = session?.messages || []
 }
 
-const deleteSession = async (sessionId: string) => {
-  await $supabase
-    .from('chat_sessions')
-    .delete()
-    .eq('id', sessionId)
-
+const deleteSession = (sessionId: string) => {
   chatSessions.value = chatSessions.value.filter(s => s.id !== sessionId)
+  saveSessions()
 
   if (currentSessionId.value === sessionId) {
     if (chatSessions.value.length > 0) {
-      await selectSession(chatSessions.value[0].id)
+      selectSession(chatSessions.value[0].id)
     } else {
       currentSessionId.value = null
       messages.value = []
@@ -146,56 +142,49 @@ const sendMessage = async () => {
   if (!inputMessage.value.trim()) return
 
   if (!currentSessionId.value) {
-    await createNewChat()
+    createNewChat()
   }
 
-  const userMessage = {
-    session_id: currentSessionId.value,
+  const userMessage: Message = {
+    id: Date.now().toString(),
     role: 'user',
-    content: inputMessage.value
+    content: inputMessage.value,
+    timestamp: Date.now()
   }
 
-  const { data: savedMessage } = await $supabase
-    .from('chat_messages')
-    .insert(userMessage)
-    .select()
-    .single()
+  messages.value.push(userMessage)
 
-  if (savedMessage) {
-    messages.value.push(savedMessage)
+  const session = chatSessions.value.find(s => s.id === currentSessionId.value)
+  if (session) {
+    session.messages.push(userMessage)
+
+    if (session.title === 'New Chat') {
+      session.title = inputMessage.value.substring(0, 50)
+    }
+    session.updatedAt = Date.now()
   }
 
   inputMessage.value = ''
 
-  const aiResponse = {
-    session_id: currentSessionId.value,
+  await new Promise(resolve => setTimeout(resolve, 500))
+
+  const aiMessage: Message = {
+    id: (Date.now() + 1).toString(),
     role: 'assistant',
-    content: 'This is a demo response. Connect your AI service here to get real responses.'
+    content: 'This is a demo response. Connect your AI service to get real responses based on your uploaded materials.',
+    timestamp: Date.now()
   }
 
-  const { data: aiMessage } = await $supabase
-    .from('chat_messages')
-    .insert(aiResponse)
-    .select()
-    .single()
-
-  if (aiMessage) {
-    messages.value.push(aiMessage)
+  messages.value.push(aiMessage)
+  if (session) {
+    session.messages.push(aiMessage)
+    session.updatedAt = Date.now()
   }
 
-  const session = chatSessions.value.find(s => s.id === currentSessionId.value)
-  if (session && session.title === 'New Chat') {
-    const newTitle = userMessage.content.substring(0, 50)
-    await $supabase
-      .from('chat_sessions')
-      .update({ title: newTitle, updated_at: new Date().toISOString() })
-      .eq('id', currentSessionId.value)
-
-    session.title = newTitle
-  }
+  saveSessions()
 }
 
-const handleFileUpload = async (file: File) => {
+const handleFileUpload = (file: File) => {
   console.log('File uploaded:', file.name)
   showFileUpload.value = false
 }
