@@ -71,8 +71,8 @@ const handleAuthSuccess = () => {
 
 .logo-image {
   position: absolute;
-  opacity: 0.08;
-  filter: blur(3px);
+  opacity: 0.15;
+  filter: blur(1px);
   user-select: none;
 }
 
