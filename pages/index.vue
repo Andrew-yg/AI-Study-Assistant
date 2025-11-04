@@ -14,15 +14,17 @@
     </nav>
 
     <div class="background-logos">
-      <div class="logo-item logo-openai">OpenAI</div>
-      <div class="logo-item logo-gemini">Gemini</div>
-      <div class="logo-item logo-deepseek">DeepSeek</div>
+      <img src="/OpenAI_Logo.svg.png" alt="OpenAI" class="logo-image logo-openai" />
+      <img src="/Google-Gemini-Logo.png" alt="Gemini" class="logo-image logo-gemini" />
+      <img src="/deepseek-color.png" alt="DeepSeek" class="logo-image logo-deepseek" />
     </div>
 
     <main class="hero-section">
       <div class="hero-content">
         <h1 class="hero-title">
-          <span class="gradient-text">Turn your lecture notes into AI-generated & searched practice exams</span> for your specific class.
+          <div class="title-line">Turn your lecture notes into</div>
+          <div class="title-line gradient-text">AI-generated & searched</div>
+          <div class="title-line">practice exams for your specific class</div>
         </h1>
         <p class="hero-subtitle">
           The AI platform that builds custom quizzes directly from your uploaded materials.
@@ -62,34 +64,40 @@ const handleAuthSuccess = () => {
   left: 0;
   right: 0;
   bottom: 0;
-  display: flex;
-  justify-content: space-around;
-  align-items: center;
   pointer-events: none;
   z-index: 0;
+  overflow: hidden;
 }
 
-.logo-item {
-  font-size: 8rem;
-  font-weight: 800;
-  opacity: 0.03;
-  filter: blur(2px);
+.logo-image {
+  position: absolute;
+  opacity: 0.08;
+  filter: blur(3px);
   user-select: none;
 }
 
 .logo-openai {
-  color: #10a37f;
-  transform: rotate(-15deg) translateY(-20%);
+  width: 450px;
+  height: auto;
+  top: 15%;
+  left: 8%;
+  transform: rotate(-12deg);
 }
 
 .logo-gemini {
-  color: #4285f4;
-  transform: rotate(10deg) translateY(10%);
+  width: 500px;
+  height: auto;
+  bottom: 12%;
+  right: 10%;
+  transform: rotate(8deg);
 }
 
 .logo-deepseek {
-  color: #5e17eb;
-  transform: rotate(-8deg) translateY(-10%);
+  width: 400px;
+  height: auto;
+  top: 45%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(-5deg);
 }
 
 .navbar {
@@ -156,8 +164,15 @@ const handleAuthSuccess = () => {
 .hero-title {
   font-size: 3.5rem;
   font-weight: 700;
-  line-height: 1.2;
+  line-height: 1.3;
   margin-bottom: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.title-line {
+  color: #1a1a1a;
 }
 
 .gradient-text {
@@ -165,7 +180,6 @@ const handleAuthSuccess = () => {
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  display: inline;
 }
 
 .hero-subtitle {

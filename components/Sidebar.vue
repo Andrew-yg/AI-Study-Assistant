@@ -1,27 +1,35 @@
 <template>
-  <div class="sidebar">
+  <div :class="['sidebar', { collapsed: isCollapsed }]">
+    <button @click="toggleSidebar" class="toggle-button" :title="isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'">
+      <svg v-if="!isCollapsed" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M15 18l-6-6 6-6" />
+      </svg>
+      <svg v-else width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M9 18l6-6-6-6" />
+      </svg>
+    </button>
     <div class="sidebar-header">
       <div class="brand">
         <span class="logo-icon">⚡️</span>
-        <h1 class="brand-name">PersonalizedForYou</h1>
+        <h1 v-if="!isCollapsed" class="brand-name">PersonalizedForYou</h1>
       </div>
-      <button @click="$emit('new-chat')" class="new-chat-button">
+      <button @click="$emit('new-chat')" class="new-chat-button" :title="isCollapsed ? 'New Chat' : ''">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M12 5v14M5 12h14" />
         </svg>
-        New Chat
+        <span v-if="!isCollapsed">New Chat</span>
       </button>
     </div>
 
     <div class="sessions-list">
-      <div class="sessions-header">Chat History</div>
+      <div v-if="!isCollapsed" class="sessions-header">Chat History</div>
       <div
         v-for="session in sessions"
         :key="session.id"
         :class="['session-item', { active: session.id === currentSessionId }]"
         @click="$emit('select-session', session.id)"
       >
-        <div class="session-title">{{ session.title }}</div>
+        <div class="session-title" :title="session.title">{{ session.title }}</div>
         <button
           @click.stop="$emit('delete-session', session.id)"
           class="delete-button"
@@ -39,11 +47,11 @@
     </div>
 
     <div class="sidebar-footer">
-      <button @click="handleLogout" class="logout-button">
+      <button @click="handleLogout" class="logout-button" :title="isCollapsed ? 'Sign Out' : ''">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" />
         </svg>
-        Sign Out
+        <span v-if="!isCollapsed">Sign Out</span>
       </button>
     </div>
   </div>
@@ -63,6 +71,11 @@ defineProps<{
 defineEmits(['new-chat', 'select-session', 'delete-session'])
 
 const router = useRouter()
+const isCollapsed = ref(false)
+
+const toggleSidebar = () => {
+  isCollapsed.value = !isCollapsed.value
+}
 
 const handleLogout = () => {
   router.push('/')
@@ -77,6 +90,36 @@ const handleLogout = () => {
   display: flex;
   flex-direction: column;
   border-right: 1px solid #2d2d2d;
+  position: relative;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar.collapsed {
+  width: 70px;
+}
+
+.toggle-button {
+  position: absolute;
+  top: 1rem;
+  right: -12px;
+  width: 24px;
+  height: 24px;
+  background: #1a1a1a;
+  border: 1px solid #2d2d2d;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  z-index: 10;
+  transition: all 0.2s;
+  cursor: pointer;
+  padding: 0;
+}
+
+.toggle-button:hover {
+  background: #2d2d2d;
+  transform: scale(1.1);
 }
 
 .sidebar-header {
@@ -89,15 +132,24 @@ const handleLogout = () => {
   align-items: center;
   gap: 0.5rem;
   margin-bottom: 1rem;
+  overflow: hidden;
 }
 
 .logo-icon {
   font-size: 1.5rem;
+  flex-shrink: 0;
 }
 
 .brand-name {
   font-size: 1rem;
   font-weight: 700;
+  white-space: nowrap;
+  opacity: 1;
+  transition: opacity 0.2s;
+}
+
+.sidebar.collapsed .brand-name {
+  opacity: 0;
 }
 
 .new-chat-button {
@@ -113,6 +165,16 @@ const handleLogout = () => {
   justify-content: center;
   gap: 0.5rem;
   transition: background 0.2s;
+  overflow: hidden;
+}
+
+.sidebar.collapsed .new-chat-button {
+  padding: 0.75rem;
+}
+
+.new-chat-button span {
+  white-space: nowrap;
+  transition: opacity 0.2s;
 }
 
 .new-chat-button:hover {
@@ -123,6 +185,7 @@ const handleLogout = () => {
   flex: 1;
   overflow-y: auto;
   padding: 1rem;
+  overflow-x: hidden;
 }
 
 .sessions-header {
@@ -132,6 +195,8 @@ const handleLogout = () => {
   color: #9ca3af;
   margin-bottom: 0.75rem;
   padding: 0 0.5rem;
+  white-space: nowrap;
+  transition: opacity 0.2s;
 }
 
 .session-item {
@@ -144,6 +209,12 @@ const handleLogout = () => {
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
+  overflow: hidden;
+}
+
+.sidebar.collapsed .session-item {
+  justify-content: center;
+  padding: 0.75rem 0.5rem;
 }
 
 .session-item:hover {
@@ -160,6 +231,16 @@ const handleLogout = () => {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  transition: opacity 0.2s;
+}
+
+.sidebar.collapsed .session-title {
+  display: none;
+}
+
+.sidebar.collapsed .session-item::before {
+  content: '💬';
+  font-size: 1.25rem;
 }
 
 .delete-button {
@@ -172,6 +253,11 @@ const handleLogout = () => {
   justify-content: center;
   opacity: 0;
   transition: opacity 0.2s, color 0.2s;
+  flex-shrink: 0;
+}
+
+.sidebar.collapsed .delete-button {
+  display: none;
 }
 
 .session-item:hover .delete-button {
@@ -207,6 +293,16 @@ const handleLogout = () => {
   justify-content: center;
   gap: 0.5rem;
   transition: background 0.2s;
+  overflow: hidden;
+}
+
+.sidebar.collapsed .logout-button {
+  padding: 0.75rem;
+}
+
+.logout-button span {
+  white-space: nowrap;
+  transition: opacity 0.2s;
 }
 
 .logout-button:hover {
