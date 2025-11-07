@@ -42,17 +42,11 @@
 
 <script setup lang="ts">
 const router = useRouter()
-const { user, loading } = useAuth()
+const { user } = useAuth()
 const showAuthModal = ref(false)
 
-watch(user, (newUser) => {
-  if (newUser && !loading.value) {
-    router.push('/chat')
-  }
-})
-
-onMounted(() => {
-  if (user.value && !loading.value) {
+watchEffect(() => {
+  if (user.value) {
     router.push('/chat')
   }
 })
