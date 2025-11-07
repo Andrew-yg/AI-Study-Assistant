@@ -5,11 +5,11 @@
         <h1>Learning Materials</h1>
         <p>Manage your uploaded study materials</p>
       </div>
-      <button @click="showUploadModal = true" class="upload-button">
+      <button @click="goToChat" class="back-button">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M12 5v14M5 12h14" />
+          <path d="M19 12H5M12 19l-7-7 7-7" />
         </svg>
-        Upload Material
+        Back to Chat
       </button>
     </div>
 
@@ -86,23 +86,33 @@
 </template>
 
 <script setup lang="ts">
+definePageMeta({
+  middleware: 'auth'
+})
+
 import type { LearningMaterial } from '~/utils/supabase'
 
+const { user } = useAuth()
 const materials = ref<LearningMaterial[]>([])
 const loading = ref(true)
 const showUploadModal = ref(false)
 const editingMaterial = ref<LearningMaterial | null>(null)
+const router = useRouter()
 
-const userId = 'temp-user-id'
+const goToChat = () => {
+  router.push('/chat')
+}
 
 onMounted(async () => {
   await fetchMaterials()
 })
 
 const fetchMaterials = async () => {
+  if (!user.value) return
+
   try {
     loading.value = true
-    const response = await $fetch(`/api/materials?userId=${userId}`)
+    const response = await $fetch(`/api/materials?userId=${user.value.id}`)
     materials.value = response.data || []
   } catch (error) {
     console.error('Failed to fetch materials:', error)
@@ -112,10 +122,15 @@ const fetchMaterials = async () => {
 }
 
 const handleUpload = async (uploadData: any) => {
+  if (!user.value) {
+    alert('You must be logged in to upload files')
+    return
+  }
+
   try {
     const formData = new FormData()
     formData.append('file', uploadData.file)
-    formData.append('userId', userId)
+    formData.append('userId', user.value.id)
     formData.append('courseName', uploadData.courseName)
     formData.append('materialType', uploadData.materialType)
     formData.append('description', uploadData.description)
@@ -225,7 +240,7 @@ const formatDate = (dateString: string) => {
   font-size: 1rem;
 }
 
-.upload-button {
+.back-button {
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -238,7 +253,7 @@ const formatDate = (dateString: string) => {
   transition: background 0.2s;
 }
 
-.upload-button:hover {
+.back-button:hover {
   background: #2d2d2d;
 }
 

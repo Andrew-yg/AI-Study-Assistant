@@ -46,18 +46,16 @@ const emit = defineEmits(['close', 'auth-success'])
 
 const loading = ref(false)
 const error = ref('')
+const { signInWithGoogle, signInWithGithub } = useAuth()
 
 const handleGoogleAuth = async () => {
   loading.value = true
   error.value = ''
 
   try {
-    console.log('Google OAuth login - to be implemented')
-    await new Promise(resolve => setTimeout(resolve, 800))
-    emit('auth-success')
+    await signInWithGoogle()
   } catch (err: any) {
     error.value = err.message || 'Failed to authenticate with Google'
-  } finally {
     loading.value = false
   }
 }
@@ -67,12 +65,9 @@ const handleGithubAuth = async () => {
   error.value = ''
 
   try {
-    console.log('GitHub OAuth login - to be implemented')
-    await new Promise(resolve => setTimeout(resolve, 800))
-    emit('auth-success')
+    await signInWithGithub()
   } catch (err: any) {
     error.value = err.message || 'Failed to authenticate with GitHub'
-  } finally {
     loading.value = false
   }
 }

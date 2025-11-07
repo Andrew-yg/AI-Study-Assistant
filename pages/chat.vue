@@ -65,6 +65,10 @@
 </template>
 
 <script setup lang="ts">
+definePageMeta({
+  middleware: 'auth'
+})
+
 interface Message {
   id: string
   role: 'user' | 'assistant'
@@ -80,6 +84,7 @@ interface ChatSession {
   updatedAt: number
 }
 
+const { user } = useAuth()
 const chatSessions = ref<ChatSession[]>([])
 const currentSessionId = ref<string | null>(null)
 const messages = ref<Message[]>([])
@@ -185,10 +190,15 @@ const sendMessage = async () => {
 }
 
 const handleFileUpload = async (uploadData: any) => {
+  if (!user.value) {
+    alert('You must be logged in to upload files')
+    return
+  }
+
   try {
     const formData = new FormData()
     formData.append('file', uploadData.file)
-    formData.append('userId', 'temp-user-id')
+    formData.append('userId', user.value.id)
     formData.append('courseName', uploadData.courseName)
     formData.append('materialType', uploadData.materialType)
     formData.append('description', uploadData.description)

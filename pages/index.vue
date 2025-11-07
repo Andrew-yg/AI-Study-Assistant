@@ -42,7 +42,14 @@
 
 <script setup lang="ts">
 const router = useRouter()
+const { user } = useAuth()
 const showAuthModal = ref(false)
+
+watchEffect(() => {
+  if (user.value) {
+    router.push('/chat')
+  }
+})
 
 const handleAuthSuccess = () => {
   showAuthModal.value = false

@@ -78,6 +78,7 @@ defineProps<{
 defineEmits(['new-chat', 'select-session', 'delete-session'])
 
 const router = useRouter()
+const { signOut } = useAuth()
 const isCollapsed = ref(false)
 
 const toggleSidebar = () => {
@@ -88,8 +89,13 @@ const goToMaterials = () => {
   router.push('/materials')
 }
 
-const handleLogout = () => {
-  router.push('/')
+const handleLogout = async () => {
+  try {
+    await signOut()
+    router.push('/')
+  } catch (error) {
+    console.error('Sign out failed:', error)
+  }
 }
 </script>
 
