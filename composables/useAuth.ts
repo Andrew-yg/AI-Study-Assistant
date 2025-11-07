@@ -25,10 +25,11 @@ export const useAuth = () => {
   }
 
   const signInWithGoogle = async () => {
+    const origin = window.location.origin
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/chat`
+        redirectTo: `${origin}/auth/callback`
       }
     })
 
@@ -40,10 +41,11 @@ export const useAuth = () => {
   }
 
   const signInWithGithub = async () => {
+    const origin = window.location.origin
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'github',
       options: {
-        redirectTo: `${window.location.origin}/chat`
+        redirectTo: `${origin}/auth/callback`
       }
     })
 
