@@ -2,7 +2,7 @@
   <div class="modal-overlay" @click.self="$emit('close')">
     <div class="modal-content">
       <div class="modal-header">
-        <h3>Upload PDF</h3>
+        <h3>Upload Learning Material</h3>
         <button @click="$emit('close')" class="close-button">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M18 6L6 18M6 6l12 12" />
@@ -10,47 +10,104 @@
         </button>
       </div>
 
-      <div class="upload-area" @click="triggerFileInput" @dragover.prevent @drop.prevent="handleDrop">
-        <input
-          ref="fileInput"
-          type="file"
-          accept=".pdf"
-          @change="handleFileSelect"
-          style="display: none"
-        />
-
-        <div v-if="!selectedFile" class="upload-placeholder">
-          <div class="upload-icon">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12" />
-            </svg>
-          </div>
-          <p class="upload-text">Click to upload or drag and drop</p>
-          <p class="upload-hint">PDF files only</p>
+      <form @submit.prevent="handleUpload" class="upload-form">
+        <div class="form-section">
+          <label class="form-label" for="material-title">Title *</label>
+          <input
+            id="material-title"
+            v-model="formData.title"
+            type="text"
+            placeholder="e.g., Introduction to Neural Networks"
+            class="form-input"
+            required
+          />
         </div>
 
-        <div v-else class="file-selected">
-          <div class="file-icon">📄</div>
-          <div class="file-info">
-            <div class="file-name">{{ selectedFile.name }}</div>
-            <div class="file-size">{{ formatFileSize(selectedFile.size) }}</div>
+        <div class="form-section">
+          <label class="form-label" for="course-name">Course Name *</label>
+          <input
+            id="course-name"
+            v-model="formData.courseName"
+            type="text"
+            placeholder="e.g., CS 229 - Machine Learning"
+            class="form-input"
+            required
+          />
+        </div>
+
+        <div class="form-section">
+          <label class="form-label" for="material-type">Material Type *</label>
+          <select
+            id="material-type"
+            v-model="formData.materialType"
+            class="form-select"
+            required
+          >
+            <option value="" disabled>Select type</option>
+            <option value="lecture">Lecture Notes</option>
+            <option value="textbook">Textbook Chapter</option>
+            <option value="slides">Presentation Slides</option>
+            <option value="assignment">Assignment</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+
+        <div class="form-section">
+          <label class="form-label" for="description">Description</label>
+          <textarea
+            id="description"
+            v-model="formData.description"
+            placeholder="Add notes about this material (optional)"
+            class="form-textarea"
+            rows="3"
+          ></textarea>
+        </div>
+
+        <div class="form-section">
+          <label class="form-label">PDF File *</label>
+          <div class="upload-area" @click="triggerFileInput" @dragover.prevent @drop.prevent="handleDrop">
+            <input
+              ref="fileInput"
+              type="file"
+              accept=".pdf"
+              @change="handleFileSelect"
+              style="display: none"
+            />
+
+            <div v-if="!selectedFile" class="upload-placeholder">
+              <div class="upload-icon">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12" />
+                </svg>
+              </div>
+              <p class="upload-text">Click to upload or drag and drop</p>
+              <p class="upload-hint">PDF files only</p>
+            </div>
+
+            <div v-else class="file-selected">
+              <div class="file-icon">📄</div>
+              <div class="file-info">
+                <div class="file-name">{{ selectedFile.name }}</div>
+                <div class="file-size">{{ formatFileSize(selectedFile.size) }}</div>
+              </div>
+              <button @click.stop="selectedFile = null" class="remove-file-button">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M18 6L6 18M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
           </div>
-          <button @click.stop="selectedFile = null" class="remove-file-button">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M18 6L6 18M6 6l12 12" />
-            </svg>
+        </div>
+
+        <div v-if="error" class="error-message">{{ error }}</div>
+
+        <div class="modal-footer">
+          <button type="button" @click="$emit('close')" class="cancel-button">Cancel</button>
+          <button type="submit" :disabled="!isFormValid || uploading" class="upload-button">
+            {{ uploading ? 'Uploading...' : 'Upload Material' }}
           </button>
         </div>
-      </div>
-
-      <div v-if="error" class="error-message">{{ error }}</div>
-
-      <div class="modal-footer">
-        <button @click="$emit('close')" class="cancel-button">Cancel</button>
-        <button @click="handleUpload" :disabled="!selectedFile || uploading" class="upload-button">
-          {{ uploading ? 'Uploading...' : 'Upload' }}
-        </button>
-      </div>
+      </form>
     </div>
   </div>
 </template>
@@ -62,6 +119,20 @@ const fileInput = ref<HTMLInputElement | null>(null)
 const selectedFile = ref<File | null>(null)
 const uploading = ref(false)
 const error = ref('')
+
+const formData = ref({
+  title: '',
+  courseName: '',
+  materialType: '',
+  description: ''
+})
+
+const isFormValid = computed(() => {
+  return formData.value.title.trim() &&
+         formData.value.courseName.trim() &&
+         formData.value.materialType &&
+         selectedFile.value !== null
+})
 
 const triggerFileInput = () => {
   fileInput.value?.click()
@@ -105,13 +176,20 @@ const formatFileSize = (bytes: number) => {
 }
 
 const handleUpload = async () => {
-  if (!selectedFile.value) return
+  if (!isFormValid.value) return
 
   uploading.value = true
   error.value = ''
 
   try {
-    emit('upload', selectedFile.value)
+    const uploadData = {
+      file: selectedFile.value,
+      title: formData.value.title.trim(),
+      courseName: formData.value.courseName.trim(),
+      materialType: formData.value.materialType,
+      description: formData.value.description.trim()
+    }
+    emit('upload', uploadData)
   } catch (err: any) {
     error.value = err.message || 'Upload failed'
   } finally {
@@ -139,8 +217,10 @@ const handleUpload = async () => {
   background: white;
   border-radius: 1rem;
   width: 100%;
-  max-width: 500px;
+  max-width: 600px;
   padding: 1.5rem;
+  max-height: 90vh;
+  overflow-y: auto;
 }
 
 .modal-header {
@@ -171,14 +251,65 @@ const handleUpload = async () => {
   color: #1a1a1a;
 }
 
+.upload-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.form-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.form-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.form-input,
+.form-select,
+.form-textarea {
+  padding: 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  color: #1a1a1a;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.form-input:focus,
+.form-select:focus,
+.form-textarea:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.form-input::placeholder,
+.form-textarea::placeholder {
+  color: #9ca3af;
+}
+
+.form-select {
+  cursor: pointer;
+}
+
+.form-textarea {
+  resize: vertical;
+  min-height: 80px;
+  font-family: inherit;
+}
+
 .upload-area {
   border: 2px dashed #d1d5db;
   border-radius: 0.75rem;
-  padding: 2rem;
+  padding: 1.5rem;
   text-align: center;
   cursor: pointer;
   transition: border-color 0.2s, background 0.2s;
-  margin-bottom: 1rem;
 }
 
 .upload-area:hover {
@@ -258,7 +389,6 @@ const handleUpload = async () => {
   border-radius: 0.5rem;
   color: #dc2626;
   font-size: 0.875rem;
-  margin-bottom: 1rem;
 }
 
 .modal-footer {
