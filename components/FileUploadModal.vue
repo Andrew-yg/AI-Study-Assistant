@@ -12,18 +12,6 @@
 
       <form @submit.prevent="handleUpload" class="upload-form">
         <div class="form-section">
-          <label class="form-label" for="material-title">Title *</label>
-          <input
-            id="material-title"
-            v-model="formData.title"
-            type="text"
-            placeholder="e.g., Introduction to Neural Networks"
-            class="form-input"
-            required
-          />
-        </div>
-
-        <div class="form-section">
           <label class="form-label" for="course-name">Course Name *</label>
           <input
             id="course-name"
@@ -121,15 +109,13 @@ const uploading = ref(false)
 const error = ref('')
 
 const formData = ref({
-  title: '',
   courseName: '',
   materialType: '',
   description: ''
 })
 
 const isFormValid = computed(() => {
-  return formData.value.title.trim() &&
-         formData.value.courseName.trim() &&
+  return formData.value.courseName.trim() &&
          formData.value.materialType &&
          selectedFile.value !== null
 })
@@ -184,7 +170,6 @@ const handleUpload = async () => {
   try {
     const uploadData = {
       file: selectedFile.value,
-      title: formData.value.title.trim(),
       courseName: formData.value.courseName.trim(),
       materialType: formData.value.materialType,
       description: formData.value.description.trim()

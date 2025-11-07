@@ -47,6 +47,13 @@
     </div>
 
     <div class="sidebar-footer">
+      <button @click="goToMaterials" class="materials-button" :title="isCollapsed ? 'My Materials' : ''">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+        </svg>
+        <span v-if="!isCollapsed">My Materials</span>
+      </button>
       <button @click="handleLogout" class="logout-button" :title="isCollapsed ? 'Sign Out' : ''">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" />
@@ -75,6 +82,10 @@ const isCollapsed = ref(false)
 
 const toggleSidebar = () => {
   isCollapsed.value = !isCollapsed.value
+}
+
+const goToMaterials = () => {
+  router.push('/materials')
 }
 
 const handleLogout = () => {
@@ -278,8 +289,12 @@ const handleLogout = () => {
 .sidebar-footer {
   padding: 1rem;
   border-top: 1px solid #2d2d2d;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
+.materials-button,
 .logout-button {
   width: 100%;
   padding: 0.75rem 1rem;
@@ -296,15 +311,18 @@ const handleLogout = () => {
   overflow: hidden;
 }
 
+.sidebar.collapsed .materials-button,
 .sidebar.collapsed .logout-button {
   padding: 0.75rem;
 }
 
+.materials-button span,
 .logout-button span {
   white-space: nowrap;
   transition: opacity 0.2s;
 }
 
+.materials-button:hover,
 .logout-button:hover {
   background: #2d2d2d;
 }

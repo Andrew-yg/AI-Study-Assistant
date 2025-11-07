@@ -184,9 +184,41 @@ const sendMessage = async () => {
   saveSessions()
 }
 
-const handleFileUpload = (file: File) => {
-  console.log('File uploaded:', file.name)
-  showFileUpload.value = false
+const handleFileUpload = async (uploadData: any) => {
+  try {
+    const formData = new FormData()
+    formData.append('file', uploadData.file)
+    formData.append('userId', 'temp-user-id')
+    formData.append('courseName', uploadData.courseName)
+    formData.append('materialType', uploadData.materialType)
+    formData.append('description', uploadData.description)
+
+    const response = await $fetch('/api/upload', {
+      method: 'POST',
+      body: formData
+    })
+
+    console.log('Upload successful:', response)
+    showFileUpload.value = false
+
+    const aiMessage: Message = {
+      id: Date.now().toString(),
+      role: 'assistant',
+      content: `Successfully uploaded ${uploadData.file.name}! You can now ask questions about this material.`,
+      timestamp: Date.now()
+    }
+    messages.value.push(aiMessage)
+
+    const session = chatSessions.value.find(s => s.id === currentSessionId.value)
+    if (session) {
+      session.messages.push(aiMessage)
+      session.updatedAt = Date.now()
+      saveSessions()
+    }
+  } catch (error: any) {
+    console.error('Upload failed:', error)
+    alert('Failed to upload file: ' + (error.message || 'Unknown error'))
+  }
 }
 </script>
 
