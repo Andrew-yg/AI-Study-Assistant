@@ -1,9 +1,26 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || ''
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
+let supabaseInstance: ReturnType<typeof createClient> | null = null
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+export const useSupabaseClient = () => {
+  if (!supabaseInstance && process.client) {
+    const config = useRuntimeConfig()
+    const supabaseUrl = config.public.supabaseUrl as string
+    const supabaseAnonKey = config.public.supabaseAnonKey as string
+
+    if (!supabaseUrl || !supabaseAnonKey) {
+      throw new Error('Supabase URL and Anon Key must be provided')
+    }
+
+    supabaseInstance = createClient(supabaseUrl, supabaseAnonKey)
+  }
+
+  if (!supabaseInstance) {
+    throw new Error('Supabase client is only available on the client side')
+  }
+
+  return supabaseInstance
+}
 
 export type LearningMaterial = {
   id: string

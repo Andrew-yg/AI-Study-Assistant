@@ -1,4 +1,4 @@
-import { supabase } from '~/utils/supabase'
+import { useSupabaseClient } from '~/utils/supabase'
 import type { User, Session } from '@supabase/supabase-js'
 
 export const useAuth = () => {
@@ -7,8 +7,11 @@ export const useAuth = () => {
   const loading = useState<boolean>('auth-loading', () => true)
 
   const initAuth = async () => {
+    if (!process.client) return
+
     loading.value = true
     try {
+      const supabase = useSupabaseClient()
       const { data: { session: currentSession } } = await supabase.auth.getSession()
       session.value = currentSession
       user.value = currentSession?.user || null
@@ -25,6 +28,7 @@ export const useAuth = () => {
   }
 
   const signInWithGoogle = async () => {
+    const supabase = useSupabaseClient()
     const origin = window.location.origin
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
@@ -46,6 +50,7 @@ export const useAuth = () => {
   }
 
   const signInWithGithub = async () => {
+    const supabase = useSupabaseClient()
     const origin = window.location.origin
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'github',
@@ -67,6 +72,7 @@ export const useAuth = () => {
   }
 
   const signOut = async () => {
+    const supabase = useSupabaseClient()
     const { error } = await supabase.auth.signOut()
     if (error) {
       throw error
