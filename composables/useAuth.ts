@@ -34,7 +34,12 @@ export const useAuth = () => {
     })
 
     if (error) {
+      console.error('Google OAuth error:', error)
       throw error
+    }
+
+    if (data?.url) {
+      window.location.href = data.url
     }
 
     return data
@@ -50,7 +55,12 @@ export const useAuth = () => {
     })
 
     if (error) {
+      console.error('GitHub OAuth error:', error)
       throw error
+    }
+
+    if (data?.url) {
+      window.location.href = data.url
     }
 
     return data
