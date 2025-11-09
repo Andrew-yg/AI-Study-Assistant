@@ -1,25 +1,7 @@
-import { supabase } from '~/server/utils/supabase'
+import { getAuthenticatedSupabase } from '~/server/utils/auth'
 
 export default defineEventHandler(async (event) => {
-  const authHeader = getHeader(event, 'authorization')
-
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    throw createError({
-      statusCode: 401,
-      message: 'Unauthorized'
-    })
-  }
-
-  const token = authHeader.substring(7)
-
-  const { data: { user }, error: authError } = await supabase.auth.getUser(token)
-
-  if (authError || !user) {
-    throw createError({
-      statusCode: 401,
-      message: 'Invalid authentication token'
-    })
-  }
+  const { supabase, user } = await getAuthenticatedSupabase(event)
 
   const conversationId = getRouterParam(event, 'conversationId')
 

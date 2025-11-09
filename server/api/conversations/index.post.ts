@@ -1,27 +1,7 @@
-import { supabase } from '~/server/utils/supabase'
+import { getAuthenticatedSupabase } from '~/server/utils/auth'
 
 export default defineEventHandler(async (event) => {
-  const authHeader = getHeader(event, 'authorization')
-
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    console.error('[API] Missing or invalid authorization header')
-    throw createError({
-      statusCode: 401,
-      message: 'Unauthorized'
-    })
-  }
-
-  const token = authHeader.substring(7)
-
-  const { data: { user }, error: authError } = await supabase.auth.getUser(token)
-
-  if (authError || !user) {
-    console.error('[API] Authentication failed:', authError?.message)
-    throw createError({
-      statusCode: 401,
-      message: 'Invalid authentication token'
-    })
-  }
+  const { supabase, user } = await getAuthenticatedSupabase(event)
 
   const body = await readBody(event)
   const { title } = body
@@ -38,7 +18,7 @@ export default defineEventHandler(async (event) => {
     .single()
 
   if (error) {
-    console.error('[API] Failed to create conversation:', error.message, error.details)
+    console.error('[API] Failed to create conversation:', error.message, error.details, error.hint)
     throw createError({
       statusCode: 500,
       message: `Failed to create conversation: ${error.message}`
