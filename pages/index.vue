@@ -120,7 +120,7 @@ const handleAuthSuccess = () => {
 }
 
 .logo-minimax {
-  width: 400px;
+  width: 270px;
   height: auto;
   bottom: 15%;
   left: 10%;
