@@ -17,7 +17,7 @@
       <img src="/OpenAI_Logo.svg.png" alt="OpenAI" class="logo-image logo-openai" />
       <img src="/Google-Gemini-Logo.png" alt="Gemini" class="logo-image logo-gemini" />
       <img src="/deepseek-color.png" alt="DeepSeek" class="logo-image logo-deepseek" />
-      <img src="/MiniMaxAI.png" alt="Minimax" class="logo-image logo-minimax" />
+      <img src="/minimax-color.png" alt="Minimax" class="logo-image logo-minimax" />
       <img src="/Claude_AI_logo.svg" alt="Claude" class="logo-image logo-claude" />
     </div>
 
