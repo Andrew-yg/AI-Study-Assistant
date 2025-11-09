@@ -17,6 +17,8 @@
       <img src="/OpenAI_Logo.svg.png" alt="OpenAI" class="logo-image logo-openai" />
       <img src="/Google-Gemini-Logo.png" alt="Gemini" class="logo-image logo-gemini" />
       <img src="/deepseek-color.png" alt="DeepSeek" class="logo-image logo-deepseek" />
+      <img src="/MiniMaxAI.png" alt="Minimax" class="logo-image logo-minimax" />
+      <img src="/Claude_AI_logo.svg" alt="Claude" class="logo-image logo-claude" />
     </div>
 
     <main class="hero-section">
@@ -24,7 +26,7 @@
         <h1 class="hero-title">
           <div class="title-line">Turn your lecture notes into</div>
           <div class="title-line gradient-text">AI-generated & searched</div>
-          <div class="title-line">practice exams for your specific class</div>
+          <div class="title-line">practice quizzes</div>
         </h1>
         <p class="hero-subtitle">
           The AI platform that builds custom quizzes directly from your uploaded materials.
@@ -105,6 +107,22 @@ const handleAuthSuccess = () => {
   top: 45%;
   left: 50%;
   transform: translate(-50%, -50%) rotate(-5deg);
+}
+
+.logo-minimax {
+  width: 400px;
+  height: auto;
+  bottom: 15%;
+  left: 10%;
+  transform: rotate(-10deg);
+}
+
+.logo-claude {
+  width: 420px;
+  height: auto;
+  top: 12%;
+  right: 8%;
+  transform: rotate(15deg);
 }
 
 .navbar {

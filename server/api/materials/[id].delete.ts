@@ -32,10 +32,9 @@ export default defineEventHandler(async (event) => {
     }
 
     if (material.file_path) {
-      const filePath = material.file_path.replace('learning-materials/', '')
       await supabase.storage
         .from('learning-materials')
-        .remove([filePath])
+        .remove([material.file_path])
     }
 
     const { error: deleteError } = await supabase
