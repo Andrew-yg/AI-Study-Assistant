@@ -83,6 +83,16 @@ const handleAuthSuccess = () => {
   opacity: 0.15;
   filter: blur(1px);
   user-select: none;
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.logo-image:hover {
+  opacity: 0.45;
+  filter: blur(0px);
+  transform: scale(1.05);
+  z-index: 2;
 }
 
 .logo-openai {

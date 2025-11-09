@@ -9,6 +9,23 @@
     />
 
     <div class="main-content">
+      <div class="user-header">
+        <button class="user-button" @click="showUserMenu = !showUserMenu">
+          <div class="user-avatar">{{ userInitials }}</div>
+          <span class="user-name">{{ userName }}</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M6 9l6 6 6-6" />
+          </svg>
+        </button>
+        <div v-if="showUserMenu" class="user-menu">
+          <div class="user-menu-item" @click="handleLogout">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" />
+            </svg>
+            Sign Out
+          </div>
+        </div>
+      </div>
       <div class="chat-container">
         <div v-if="messages.length === 0" class="empty-state">
           <div class="empty-icon">⚡️</div>
@@ -65,128 +82,139 @@
 </template>
 
 <script setup lang="ts">
+import type { Conversation, Message as DBMessage } from '~/composables/useConversations'
+
 definePageMeta({
   middleware: 'auth'
 })
 
-interface Message {
-  id: string
-  role: 'user' | 'assistant'
-  content: string
-  timestamp: number
-}
+const { user, signOut } = useAuth()
+const router = useRouter()
+const conversationsAPI = useConversations()
 
-interface ChatSession {
-  id: string
-  title: string
-  messages: Message[]
-  createdAt: number
-  updatedAt: number
-}
-
-const { user } = useAuth()
-const chatSessions = ref<ChatSession[]>([])
+const chatSessions = ref<Conversation[]>([])
 const currentSessionId = ref<string | null>(null)
-const messages = ref<Message[]>([])
+const messages = ref<DBMessage[]>([])
 const inputMessage = ref('')
 const showFileUpload = ref(false)
+const showUserMenu = ref(false)
+const loading = ref(false)
 
-onMounted(() => {
-  loadSessions()
+const userName = computed(() => {
+  return user.value?.user_metadata?.full_name || user.value?.email?.split('@')[0] || 'User'
 })
 
-const loadSessions = () => {
-  const stored = localStorage.getItem('chat-sessions')
-  if (stored) {
-    chatSessions.value = JSON.parse(stored)
+const userInitials = computed(() => {
+  const name = userName.value
+  return name.substring(0, 2).toUpperCase()
+})
+
+onMounted(async () => {
+  await loadSessions()
+})
+
+const loadSessions = async () => {
+  try {
+    loading.value = true
+    chatSessions.value = await conversationsAPI.fetchConversations()
     if (chatSessions.value.length > 0) {
-      selectSession(chatSessions.value[0].id)
+      await selectSession(chatSessions.value[0].id)
     }
+  } catch (error) {
+    console.error('Failed to load conversations:', error)
+  } finally {
+    loading.value = false
   }
 }
 
-const saveSessions = () => {
-  localStorage.setItem('chat-sessions', JSON.stringify(chatSessions.value))
-}
-
-const createNewChat = () => {
-  const newSession: ChatSession = {
-    id: Date.now().toString(),
-    title: 'New Chat',
-    messages: [],
-    createdAt: Date.now(),
-    updatedAt: Date.now()
+const createNewChat = async () => {
+  try {
+    loading.value = true
+    const newConversation = await conversationsAPI.createConversation('New Chat')
+    chatSessions.value.unshift(newConversation)
+    await selectSession(newConversation.id)
+  } catch (error) {
+    console.error('Failed to create conversation:', error)
+    alert('Failed to create new chat')
+  } finally {
+    loading.value = false
   }
-
-  chatSessions.value.unshift(newSession)
-  saveSessions()
-  selectSession(newSession.id)
 }
 
-const selectSession = (sessionId: string) => {
-  currentSessionId.value = sessionId
-  const session = chatSessions.value.find(s => s.id === sessionId)
-  messages.value = session?.messages || []
+const selectSession = async (sessionId: string) => {
+  try {
+    loading.value = true
+    currentSessionId.value = sessionId
+    messages.value = await conversationsAPI.fetchMessages(sessionId)
+  } catch (error) {
+    console.error('Failed to load messages:', error)
+    messages.value = []
+  } finally {
+    loading.value = false
+  }
 }
 
-const deleteSession = (sessionId: string) => {
-  chatSessions.value = chatSessions.value.filter(s => s.id !== sessionId)
-  saveSessions()
+const deleteSession = async (sessionId: string) => {
+  try {
+    await conversationsAPI.deleteConversation(sessionId)
+    chatSessions.value = chatSessions.value.filter(s => s.id !== sessionId)
 
-  if (currentSessionId.value === sessionId) {
-    if (chatSessions.value.length > 0) {
-      selectSession(chatSessions.value[0].id)
-    } else {
-      currentSessionId.value = null
-      messages.value = []
+    if (currentSessionId.value === sessionId) {
+      if (chatSessions.value.length > 0) {
+        await selectSession(chatSessions.value[0].id)
+      } else {
+        currentSessionId.value = null
+        messages.value = []
+      }
     }
+  } catch (error) {
+    console.error('Failed to delete conversation:', error)
+    alert('Failed to delete chat')
   }
 }
 
 const sendMessage = async () => {
-  if (!inputMessage.value.trim()) return
+  if (!inputMessage.value.trim() || loading.value) return
 
-  if (!currentSessionId.value) {
-    createNewChat()
-  }
-
-  const userMessage: Message = {
-    id: Date.now().toString(),
-    role: 'user',
-    content: inputMessage.value,
-    timestamp: Date.now()
-  }
-
-  messages.value.push(userMessage)
-
-  const session = chatSessions.value.find(s => s.id === currentSessionId.value)
-  if (session) {
-    session.messages.push(userMessage)
-
-    if (session.title === 'New Chat') {
-      session.title = inputMessage.value.substring(0, 50)
+  try {
+    if (!currentSessionId.value) {
+      await createNewChat()
+      if (!currentSessionId.value) return
     }
-    session.updatedAt = Date.now()
+
+    const userContent = inputMessage.value
+    inputMessage.value = ''
+    loading.value = true
+
+    const userMessage = await conversationsAPI.sendMessage(
+      currentSessionId.value,
+      'user',
+      userContent
+    )
+    messages.value.push(userMessage)
+
+    const session = chatSessions.value.find(s => s.id === currentSessionId.value)
+    if (session && session.title === 'New Chat') {
+      const newTitle = userContent.substring(0, 50)
+      await conversationsAPI.updateConversation(currentSessionId.value, newTitle)
+      session.title = newTitle
+    }
+
+    await new Promise(resolve => setTimeout(resolve, 500))
+
+    const aiMessage = await conversationsAPI.sendMessage(
+      currentSessionId.value,
+      'assistant',
+      'This is a demo response. Connect your AI service to get real responses based on your uploaded materials.'
+    )
+    messages.value.push(aiMessage)
+
+  } catch (error) {
+    console.error('Failed to send message:', error)
+    alert('Failed to send message')
+  } finally {
+    loading.value = false
   }
-
-  inputMessage.value = ''
-
-  await new Promise(resolve => setTimeout(resolve, 500))
-
-  const aiMessage: Message = {
-    id: (Date.now() + 1).toString(),
-    role: 'assistant',
-    content: 'This is a demo response. Connect your AI service to get real responses based on your uploaded materials.',
-    timestamp: Date.now()
-  }
-
-  messages.value.push(aiMessage)
-  if (session) {
-    session.messages.push(aiMessage)
-    session.updatedAt = Date.now()
-  }
-
-  saveSessions()
 }
 
 const handleFileUpload = async (uploadData: any) => {
@@ -196,9 +224,17 @@ const handleFileUpload = async (uploadData: any) => {
   }
 
   try {
+    loading.value = true
+
+    if (!currentSessionId.value) {
+      await createNewChat()
+      if (!currentSessionId.value) return
+    }
+
     const formData = new FormData()
     formData.append('file', uploadData.file)
     formData.append('userId', user.value.id)
+    formData.append('conversationId', currentSessionId.value)
     formData.append('courseName', uploadData.courseName)
     formData.append('materialType', uploadData.materialType)
     formData.append('description', uploadData.description)
@@ -211,23 +247,26 @@ const handleFileUpload = async (uploadData: any) => {
     console.log('Upload successful:', response)
     showFileUpload.value = false
 
-    const aiMessage: Message = {
-      id: Date.now().toString(),
-      role: 'assistant',
-      content: `Successfully uploaded ${uploadData.file.name}! You can now ask questions about this material.`,
-      timestamp: Date.now()
-    }
+    const aiMessage = await conversationsAPI.sendMessage(
+      currentSessionId.value,
+      'assistant',
+      `Successfully uploaded ${uploadData.file.name}! You can now ask questions about this material.`
+    )
     messages.value.push(aiMessage)
-
-    const session = chatSessions.value.find(s => s.id === currentSessionId.value)
-    if (session) {
-      session.messages.push(aiMessage)
-      session.updatedAt = Date.now()
-      saveSessions()
-    }
   } catch (error: any) {
     console.error('Upload failed:', error)
     alert('Failed to upload file: ' + (error.message || 'Unknown error'))
+  } finally {
+    loading.value = false
+  }
+}
+
+const handleLogout = async () => {
+  try {
+    await signOut()
+    router.push('/')
+  } catch (error) {
+    console.error('Logout failed:', error)
   }
 }
 </script>
@@ -244,6 +283,99 @@ const handleFileUpload = async (uploadData: any) => {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+.user-header {
+  padding: 1rem 2rem;
+  background: white;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: flex-start;
+  position: relative;
+}
+
+.user-button {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 1rem;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 2rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #1a1a1a;
+}
+
+.user-button:hover {
+  background: #f3f4f6;
+  border-color: #d1d5db;
+}
+
+.user-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.75rem;
+}
+
+.user-name {
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-menu {
+  position: absolute;
+  top: 4rem;
+  left: 2rem;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.75rem;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  min-width: 200px;
+  overflow: hidden;
+  z-index: 100;
+  animation: slideDown 0.2s ease;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.user-menu-item {
+  padding: 0.75rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  transition: background 0.2s;
+  font-size: 0.875rem;
+  color: #1a1a1a;
+}
+
+.user-menu-item:hover {
+  background: #f9fafb;
+}
+
+.user-menu-item svg {
+  color: #6b7280;
 }
 
 .chat-container {

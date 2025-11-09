@@ -16,6 +16,7 @@ export default defineEventHandler(async (event) => {
     let courseName: string = ''
     let materialType: string = ''
     let description: string = ''
+    let conversationId: string = ''
 
     for (const part of form) {
       if (part.name === 'file') {
@@ -28,6 +29,8 @@ export default defineEventHandler(async (event) => {
         materialType = part.data.toString()
       } else if (part.name === 'description') {
         description = part.data.toString()
+      } else if (part.name === 'conversationId') {
+        conversationId = part.data.toString()
       }
     }
 
@@ -70,6 +73,7 @@ export default defineEventHandler(async (event) => {
       .from('learning_materials')
       .insert({
         user_id: userId,
+        conversation_id: conversationId || null,
         course_name: courseName,
         material_type: materialType,
         description: description || '',
