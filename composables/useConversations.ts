@@ -18,33 +18,37 @@ export interface Message {
 
 export const useConversations = () => {
   const supabase = useSupabaseClient()
-  const { session } = useAuth()
 
-  const getAuthHeaders = () => {
-    if (!session.value?.access_token) {
+  const getAuthHeaders = async () => {
+    const { data: { session } } = await supabase.auth.getSession()
+
+    if (!session?.access_token) {
       throw new Error('No authentication token available')
     }
+
     return {
-      Authorization: `Bearer ${session.value.access_token}`
+      Authorization: `Bearer ${session.access_token}`
     }
   }
 
   const fetchConversations = async (): Promise<Conversation[]> => {
+    const headers = await getAuthHeaders()
     const { conversations } = await $fetch<{ conversations: Conversation[] }>(
       '/api/conversations',
       {
-        headers: getAuthHeaders()
+        headers
       }
     )
     return conversations
   }
 
   const createConversation = async (title: string = 'New Chat'): Promise<Conversation> => {
+    const headers = await getAuthHeaders()
     const { conversation } = await $fetch<{ conversation: Conversation }>(
       '/api/conversations',
       {
         method: 'POST',
-        headers: getAuthHeaders(),
+        headers,
         body: { title }
       }
     )
@@ -52,11 +56,12 @@ export const useConversations = () => {
   }
 
   const updateConversation = async (id: string, title: string): Promise<Conversation> => {
+    const headers = await getAuthHeaders()
     const { conversation } = await $fetch<{ conversation: Conversation }>(
       `/api/conversations/${id}`,
       {
         method: 'PUT',
-        headers: getAuthHeaders(),
+        headers,
         body: { title }
       }
     )
@@ -64,17 +69,19 @@ export const useConversations = () => {
   }
 
   const deleteConversation = async (id: string): Promise<void> => {
+    const headers = await getAuthHeaders()
     await $fetch(`/api/conversations/${id}`, {
       method: 'DELETE',
-      headers: getAuthHeaders()
+      headers
     })
   }
 
   const fetchMessages = async (conversationId: string): Promise<Message[]> => {
+    const headers = await getAuthHeaders()
     const { messages } = await $fetch<{ messages: Message[] }>(
       `/api/messages/${conversationId}`,
       {
-        headers: getAuthHeaders()
+        headers
       }
     )
     return messages
@@ -85,11 +92,12 @@ export const useConversations = () => {
     role: 'user' | 'assistant',
     content: string
   ): Promise<Message> => {
+    const headers = await getAuthHeaders()
     const { message } = await $fetch<{ message: Message }>(
       '/api/messages',
       {
         method: 'POST',
-        headers: getAuthHeaders(),
+        headers,
         body: {
           conversation_id: conversationId,
           role,

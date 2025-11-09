@@ -290,7 +290,7 @@ const handleLogout = async () => {
   background: white;
   border-bottom: 1px solid #e5e7eb;
   display: flex;
-  justify-content: flex-start;
+  justify-content: flex-end;
   position: relative;
 }
 
@@ -337,7 +337,7 @@ const handleLogout = async () => {
 .user-menu {
   position: absolute;
   top: 4rem;
-  left: 2rem;
+  right: 2rem;
   background: white;
   border: 1px solid #e5e7eb;
   border-radius: 0.75rem;
@@ -531,5 +531,51 @@ const handleLogout = async () => {
 .send-button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+  .user-header {
+    padding: 0.75rem 1rem;
+  }
+
+  .user-button {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.8125rem;
+  }
+
+  .user-avatar {
+    width: 28px;
+    height: 28px;
+    font-size: 0.6875rem;
+  }
+
+  .user-name {
+    max-width: 100px;
+  }
+
+  .user-menu {
+    right: 1rem;
+    min-width: 180px;
+  }
+
+  .chat-container {
+    padding: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .user-name {
+    display: none;
+  }
+
+  .user-button {
+    padding: 0.375rem;
+  }
+
+  .user-menu {
+    right: 0.5rem;
+    left: auto;
+    min-width: 160px;
+  }
 }
 </style>
