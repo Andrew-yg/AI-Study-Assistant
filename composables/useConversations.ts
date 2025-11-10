@@ -1,5 +1,3 @@
-import { useSupabaseClient } from '~/utils/supabase'
-
 export interface Conversation {
   id: string
   user_id: string
@@ -17,10 +15,9 @@ export interface Message {
 }
 
 export const useConversations = () => {
-  const supabase = useSupabaseClient()
-
   const getAuthHeaders = async () => {
-    const { data: { session } } = await supabase.auth.getSession()
+    const { $supabase } = useNuxtApp()
+    const { data: { session } } = await $supabase.auth.getSession()
 
     if (!session?.access_token) {
       throw new Error('No authentication token available')
@@ -43,16 +40,23 @@ export const useConversations = () => {
   }
 
   const createConversation = async (title: string = 'New Chat'): Promise<Conversation> => {
-    const headers = await getAuthHeaders()
-    const { conversation } = await $fetch<{ conversation: Conversation }>(
-      '/api/conversations',
-      {
-        method: 'POST',
-        headers,
-        body: { title }
-      }
-    )
-    return conversation
+    try {
+      const headers = await getAuthHeaders()
+      console.log('[useConversations] Creating conversation with title:', title)
+      const { conversation } = await $fetch<{ conversation: Conversation }>(
+        '/api/conversations',
+        {
+          method: 'POST',
+          headers,
+          body: { title }
+        }
+      )
+      console.log('[useConversations] Conversation created successfully:', conversation.id)
+      return conversation
+    } catch (error: any) {
+      console.error('[useConversations] Failed to create conversation:', error)
+      throw error
+    }
   }
 
   const updateConversation = async (id: string, title: string): Promise<Conversation> => {

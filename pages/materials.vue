@@ -112,10 +112,24 @@ const fetchMaterials = async () => {
 
   try {
     loading.value = true
-    const response = await $fetch(`/api/materials?userId=${user.value.id}`)
+    console.log('[Materials] Fetching materials...')
+    const { $supabase } = useNuxtApp()
+    const { data: { session } } = await $supabase.auth.getSession()
+    
+    if (!session?.access_token) {
+      console.error('[Materials] No session token for fetch')
+      return
+    }
+
+    const response = await $fetch(`/api/materials?userId=${user.value.id}`, {
+      headers: {
+        Authorization: `Bearer ${session.access_token}`
+      }
+    })
     materials.value = response.data || []
+    console.log('[Materials] Loaded', materials.value.length, 'materials')
   } catch (error) {
-    console.error('Failed to fetch materials:', error)
+    console.error('[Materials] Failed to fetch materials:', error)
   } finally {
     loading.value = false
   }
@@ -128,6 +142,16 @@ const handleUpload = async (uploadData: any) => {
   }
 
   try {
+    console.log('[Materials] Starting upload...')
+    const { $supabase } = useNuxtApp()
+    const { data: { session } } = await $supabase.auth.getSession()
+    
+    if (!session?.access_token) {
+      console.error('[Materials] No session token available')
+      alert('Authentication error. Please try logging in again.')
+      return
+    }
+
     const formData = new FormData()
     formData.append('file', uploadData.file)
     formData.append('userId', user.value.id)
@@ -135,15 +159,20 @@ const handleUpload = async (uploadData: any) => {
     formData.append('materialType', uploadData.materialType)
     formData.append('description', uploadData.description)
 
+    console.log('[Materials] Uploading file:', uploadData.file.name)
     await $fetch('/api/upload', {
       method: 'POST',
-      body: formData
+      body: formData,
+      headers: {
+        Authorization: `Bearer ${session.access_token}`
+      }
     })
 
+    console.log('[Materials] Upload successful')
     showUploadModal.value = false
     await fetchMaterials()
   } catch (error: any) {
-    console.error('Upload failed:', error)
+    console.error('[Materials] Upload failed:', error)
     alert('Failed to upload file: ' + (error.message || 'Unknown error'))
   }
 }
@@ -154,15 +183,29 @@ const editMaterial = (material: LearningMaterial) => {
 
 const handleEdit = async (materialId: string, updates: any) => {
   try {
+    console.log('[Materials] Editing material:', materialId)
+    const { $supabase } = useNuxtApp()
+    const { data: { session } } = await $supabase.auth.getSession()
+    
+    if (!session?.access_token) {
+      console.error('[Materials] No session token for edit')
+      alert('Authentication error. Please try logging in again.')
+      return
+    }
+
     await $fetch(`/api/materials/${materialId}`, {
       method: 'PUT',
-      body: updates
+      body: updates,
+      headers: {
+        Authorization: `Bearer ${session.access_token}`
+      }
     })
 
+    console.log('[Materials] Edit successful')
     editingMaterial.value = null
     await fetchMaterials()
   } catch (error: any) {
-    console.error('Edit failed:', error)
+    console.error('[Materials] Edit failed:', error)
     alert('Failed to update material: ' + (error.message || 'Unknown error'))
   }
 }
@@ -173,13 +216,27 @@ const deleteMaterial = async (materialId: string) => {
   }
 
   try {
+    console.log('[Materials] Deleting material:', materialId)
+    const { $supabase } = useNuxtApp()
+    const { data: { session } } = await $supabase.auth.getSession()
+    
+    if (!session?.access_token) {
+      console.error('[Materials] No session token for delete')
+      alert('Authentication error. Please try logging in again.')
+      return
+    }
+
     await $fetch(`/api/materials/${materialId}`, {
-      method: 'DELETE'
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${session.access_token}`
+      }
     })
 
+    console.log('[Materials] Delete successful')
     await fetchMaterials()
   } catch (error: any) {
-    console.error('Delete failed:', error)
+    console.error('[Materials] Delete failed:', error)
     alert('Failed to delete material: ' + (error.message || 'Unknown error'))
   }
 }

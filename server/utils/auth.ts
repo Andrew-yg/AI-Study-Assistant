@@ -23,22 +23,32 @@ export const getAuthenticatedSupabase = async (event: H3Event) => {
     })
   }
 
+  // Create Supabase client with the user's token
   const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     global: {
       headers: {
         Authorization: `Bearer ${token}`
       }
+    },
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false
     }
   })
 
+  // Verify the token and get user
   const { data: { user }, error: authError } = await supabase.auth.getUser(token)
 
   if (authError || !user) {
+    console.error('[Auth] Failed to verify token:', authError?.message)
     throw createError({
       statusCode: 401,
       message: 'Invalid authentication token'
     })
   }
+
+  console.log('[Auth] Authenticated user:', user.id)
 
   return { supabase, user }
 }

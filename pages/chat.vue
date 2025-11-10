@@ -130,12 +130,20 @@ const loadSessions = async () => {
 const createNewChat = async () => {
   try {
     loading.value = true
+    console.log('[Chat] Creating new conversation...')
     const newConversation = await conversationsAPI.createConversation('New Chat')
+    console.log('[Chat] New conversation created:', newConversation)
     chatSessions.value.unshift(newConversation)
     await selectSession(newConversation.id)
-  } catch (error) {
-    console.error('Failed to create conversation:', error)
-    alert('Failed to create new chat')
+  } catch (error: any) {
+    console.error('[Chat] Failed to create conversation:', error)
+    console.error('[Chat] Error details:', {
+      message: error.message,
+      statusCode: error.statusCode,
+      data: error.data,
+      cause: error.cause
+    })
+    alert(`Failed to create new chat: ${error.message || error.data?.message || 'Unknown error'}`)
   } finally {
     loading.value = false
   }
@@ -231,6 +239,14 @@ const handleFileUpload = async (uploadData: any) => {
       if (!currentSessionId.value) return
     }
 
+    // Get authentication token
+    const { $supabase } = useNuxtApp()
+    const { data: { session } } = await $supabase.auth.getSession()
+    
+    if (!session?.access_token) {
+      throw new Error('No authentication token available')
+    }
+
     const formData = new FormData()
     formData.append('file', uploadData.file)
     formData.append('userId', user.value.id)
@@ -239,12 +255,17 @@ const handleFileUpload = async (uploadData: any) => {
     formData.append('materialType', uploadData.materialType)
     formData.append('description', uploadData.description)
 
+    console.log('[Chat] Uploading file:', uploadData.file.name)
+
     const response = await $fetch('/api/upload', {
       method: 'POST',
+      headers: {
+        Authorization: `Bearer ${session.access_token}`
+      },
       body: formData
     })
 
-    console.log('Upload successful:', response)
+    console.log('[Chat] Upload successful:', response)
     showFileUpload.value = false
 
     const aiMessage = await conversationsAPI.sendMessage(
@@ -254,8 +275,8 @@ const handleFileUpload = async (uploadData: any) => {
     )
     messages.value.push(aiMessage)
   } catch (error: any) {
-    console.error('Upload failed:', error)
-    alert('Failed to upload file: ' + (error.message || 'Unknown error'))
+    console.error('[Chat] Upload failed:', error)
+    alert('Failed to upload file: ' + (error.data?.message || error.message || 'Unknown error'))
   } finally {
     loading.value = false
   }

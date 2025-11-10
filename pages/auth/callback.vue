@@ -10,11 +10,14 @@
 <script setup lang="ts">
 const router = useRouter()
 const route = useRoute()
+const { initAuth } = useAuth()
 
 onMounted(async () => {
   try {
+    const { $supabase } = useNuxtApp()
+    
+    // Check for OAuth error in URL hash
     const hashParams = new URLSearchParams(window.location.hash.substring(1))
-    const accessToken = hashParams.get('access_token')
     const error = hashParams.get('error')
     const errorDescription = hashParams.get('error_description')
 
@@ -24,7 +27,20 @@ onMounted(async () => {
       return
     }
 
-    if (accessToken) {
+    // Let Supabase handle the OAuth callback and set the session
+    const { data, error: sessionError } = await $supabase.auth.getSession()
+    
+    if (sessionError) {
+      console.error('Session error:', sessionError)
+      router.push('/')
+      return
+    }
+
+    // Re-initialize auth to update the user state
+    await initAuth()
+
+    // If we have a session, redirect to chat
+    if (data?.session) {
       await router.push('/chat')
     } else {
       router.push('/')

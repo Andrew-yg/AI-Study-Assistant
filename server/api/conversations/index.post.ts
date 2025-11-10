@@ -8,6 +8,17 @@ export default defineEventHandler(async (event) => {
 
   console.log('[API] Creating conversation for user:', user.id, 'with title:', title || 'New Chat')
 
+  // Set the session for RLS to work properly
+  const authHeader = getHeader(event, 'authorization')
+  const token = authHeader?.substring(7)
+  
+  if (token) {
+    await supabase.auth.setSession({
+      access_token: token,
+      refresh_token: ''
+    })
+  }
+
   const { data: conversation, error } = await supabase
     .from('conversations')
     .insert({
@@ -18,7 +29,12 @@ export default defineEventHandler(async (event) => {
     .single()
 
   if (error) {
-    console.error('[API] Failed to create conversation:', error.message, error.details, error.hint)
+    console.error('[API] Failed to create conversation:', {
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+      code: error.code
+    })
     throw createError({
       statusCode: 500,
       message: `Failed to create conversation: ${error.message}`

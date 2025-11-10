@@ -41,7 +41,7 @@
         </button>
       </div>
 
-      <div v-if="sessions.length === 0" class="empty-sessions">
+      <div v-if="!sessions || sessions.length === 0" class="empty-sessions">
         No chat history yet. Start a new conversation!
       </div>
     </div>
@@ -70,10 +70,13 @@ interface Session {
   title: string
 }
 
-defineProps<{
-  sessions: Session[]
-  currentSessionId: string | null
-}>()
+const props = withDefaults(defineProps<{
+  sessions?: Session[]
+  currentSessionId?: string | null
+}>(), {
+  sessions: () => [],
+  currentSessionId: null
+})
 
 defineEmits(['new-chat', 'select-session', 'delete-session'])
 

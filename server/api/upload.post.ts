@@ -4,6 +4,17 @@ export default defineEventHandler(async (event) => {
   try {
     const { supabase, user } = await getAuthenticatedSupabase(event)
 
+    // Set the session for RLS to work properly
+    const authHeader = getHeader(event, 'authorization')
+    const token = authHeader?.substring(7)
+    
+    if (token) {
+      await supabase.auth.setSession({
+        access_token: token,
+        refresh_token: ''
+      })
+    }
+
     const form = await readMultipartFormData(event)
 
     if (!form) {
