@@ -21,7 +21,7 @@ Error 400: redirect_uri_mismatch
 
 1. 左侧菜单：点击 **APIs & Services** > **Credentials**
 2. 在 "OAuth 2.0 Client IDs" 部分找到您的客户端
-3. 客户端 ID 开头应该是：`your-google-client-id`
+3. 找到您的 OAuth 2.0 客户端
 4. 点击编辑图标 ✏️
 
 ### 步骤 3: 添加授权重定向 URI
