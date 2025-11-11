@@ -101,7 +101,7 @@ const showUserMenu = ref(false)
 const loading = ref(false)
 
 const userName = computed(() => {
-  return user.value?.user_metadata?.full_name || user.value?.email?.split('@')[0] || 'User'
+  return user.value?.name || user.value?.email?.split('@')[0] || 'User'
 })
 
 const userInitials = computed(() => {
