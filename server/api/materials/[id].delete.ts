@@ -1,28 +1,24 @@
-import { supabase } from '~/server/utils/supabase'
+import { requireAuth } from '~/server/utils/auth'
+import { connectDB } from '~/server/utils/mongodb'
+import { LearningMaterial } from '~/server/models/LearningMaterial'
+import { deleteFromR2 } from '~/server/utils/r2'
 
 export default defineEventHandler(async (event) => {
+  const { userId } = await requireAuth(event)
+
+  const id = getRouterParam(event, 'id')
+
+  if (!id) {
+    throw createError({
+      statusCode: 400,
+      message: 'Material ID is required'
+    })
+  }
+
+  await connectDB()
+
   try {
-    const id = getRouterParam(event, 'id')
-
-    if (!id) {
-      throw createError({
-        statusCode: 400,
-        message: 'Material ID is required'
-      })
-    }
-
-    const { data: material, error: fetchError } = await supabase
-      .from('learning_materials')
-      .select('file_path')
-      .eq('id', id)
-      .maybeSingle()
-
-    if (fetchError) {
-      throw createError({
-        statusCode: 500,
-        message: fetchError.message
-      })
-    }
+    const material = await LearningMaterial.findOne({ _id: id, userId })
 
     if (!material) {
       throw createError({
@@ -31,23 +27,18 @@ export default defineEventHandler(async (event) => {
       })
     }
 
-    if (material.file_path) {
-      await supabase.storage
-        .from('learning-materials')
-        .remove([material.file_path])
+    // Delete file from R2
+    if (material.filePath) {
+      try {
+        await deleteFromR2(material.filePath)
+      } catch (error) {
+        console.error('[Delete] Failed to delete file from R2:', error)
+        // Continue anyway - we still want to delete the DB record
+      }
     }
 
-    const { error: deleteError } = await supabase
-      .from('learning_materials')
-      .delete()
-      .eq('id', id)
-
-    if (deleteError) {
-      throw createError({
-        statusCode: 500,
-        message: deleteError.message
-      })
-    }
+    // Delete from database
+    await LearningMaterial.findByIdAndDelete(id)
 
     return {
       success: true,
@@ -60,3 +51,4 @@ export default defineEventHandler(async (event) => {
     })
   }
 })
+

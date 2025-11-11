@@ -1,63 +1,61 @@
-import { getAuthenticatedSupabase } from '~/server/utils/auth'
+import { requireAuth } from '~/server/utils/auth'
+import { connectDB } from '~/server/utils/mongodb'
+import { Conversation } from '~/server/models/Conversation'
+import { Message } from '~/server/models/Message'
 
 export default defineEventHandler(async (event) => {
-  const { supabase, user } = await getAuthenticatedSupabase(event)
+  const { userId } = await requireAuth(event)
 
   const body = await readBody(event)
   const { conversation_id, role, content } = body
 
-  console.log('[API] Creating message for conversation:', conversation_id, 'user:', user.id)
+  console.log('[API] Creating message for conversation:', conversation_id, 'user:', userId)
 
-  // Set the session for RLS to work properly
-  const authHeader = getHeader(event, 'authorization')
-  const token = authHeader?.substring(7)
-  
-  if (token) {
-    await supabase.auth.setSession({
-      access_token: token,
-      refresh_token: ''
+  await connectDB()
+
+  try {
+    // Verify conversation belongs to user
+    const conversation = await Conversation.findOne({
+      _id: conversation_id,
+      userId
     })
-  }
 
-  const { data: conversation } = await supabase
-    .from('conversations')
-    .select('id')
-    .eq('id', conversation_id)
-    .eq('user_id', user.id)
-    .single()
+    if (!conversation) {
+      console.error('[API] Conversation not found:', conversation_id, 'for user:', userId)
+      throw createError({
+        statusCode: 404,
+        message: 'Conversation not found'
+      })
+    }
 
-  if (!conversation) {
-    console.error('[API] Conversation not found:', conversation_id, 'for user:', user.id)
-    throw createError({
-      statusCode: 404,
-      message: 'Conversation not found'
-    })
-  }
-
-  const { data: message, error } = await supabase
-    .from('messages')
-    .insert({
-      conversation_id,
+    // Create message
+    const message = await Message.create({
+      conversationId: conversation_id,
       role,
       content
     })
-    .select()
-    .single()
 
-  if (error) {
-    console.error('[API] Failed to create message:', {
-      message: error.message,
-      details: error.details,
-      hint: error.hint,
-      code: error.code
-    })
+    // Update conversation's updatedAt timestamp
+    conversation.updatedAt = new Date()
+    await conversation.save()
+
+    console.log('[API] Message created successfully:', message._id)
+
+    return {
+      message: {
+        id: message._id.toString(),
+        conversationId: message.conversationId.toString(),
+        role: message.role,
+        content: message.content,
+        createdAt: message.createdAt
+      }
+    }
+  } catch (error: any) {
+    console.error('[API] Failed to create message:', error)
     throw createError({
       statusCode: 500,
-      message: `Failed to create message: ${error.message}`
+      message: 'Failed to create message'
     })
   }
-
-  console.log('[API] Message created successfully:', message.id)
-
-  return { message }
 })
+

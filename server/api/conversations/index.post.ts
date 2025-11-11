@@ -1,47 +1,40 @@
-import { getAuthenticatedSupabase } from '~/server/utils/auth'
+import { requireAuth } from '~/server/utils/auth'
+import { connectDB } from '~/server/utils/mongodb'
+import { Conversation } from '~/server/models/Conversation'
 
 export default defineEventHandler(async (event) => {
-  const { supabase, user } = await getAuthenticatedSupabase(event)
+  const { userId } = await requireAuth(event)
 
   const body = await readBody(event)
   const { title } = body
 
-  console.log('[API] Creating conversation for user:', user.id, 'with title:', title || 'New Chat')
+  console.log('[API] Creating conversation for user:', userId, 'with title:', title || 'New Chat')
 
-  // Set the session for RLS to work properly
-  const authHeader = getHeader(event, 'authorization')
-  const token = authHeader?.substring(7)
-  
-  if (token) {
-    await supabase.auth.setSession({
-      access_token: token,
-      refresh_token: ''
-    })
-  }
+  await connectDB()
 
-  const { data: conversation, error } = await supabase
-    .from('conversations')
-    .insert({
-      user_id: user.id,
+  try {
+    const conversation = await Conversation.create({
+      userId,
       title: title || 'New Chat'
     })
-    .select()
-    .single()
 
-  if (error) {
-    console.error('[API] Failed to create conversation:', {
-      message: error.message,
-      details: error.details,
-      hint: error.hint,
-      code: error.code
-    })
+    console.log('[API] Conversation created successfully:', conversation._id)
+
+    return {
+      conversation: {
+        id: conversation._id.toString(),
+        userId: conversation.userId.toString(),
+        title: conversation.title,
+        createdAt: conversation.createdAt,
+        updatedAt: conversation.updatedAt
+      }
+    }
+  } catch (error: any) {
+    console.error('[API] Failed to create conversation:', error)
     throw createError({
       statusCode: 500,
-      message: `Failed to create conversation: ${error.message}`
+      message: 'Failed to create conversation'
     })
   }
-
-  console.log('[API] Conversation created successfully:', conversation.id)
-
-  return { conversation }
 })
+

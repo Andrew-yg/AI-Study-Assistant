@@ -1,19 +1,11 @@
-import { getAuthenticatedSupabase } from '~/server/utils/auth'
+import { requireAuth } from '~/server/utils/auth'
+import { connectDB } from '~/server/utils/mongodb'
+import { LearningMaterial } from '~/server/models/LearningMaterial'
+import { uploadToR2, getSignedR2Url } from '~/server/utils/r2'
 
 export default defineEventHandler(async (event) => {
   try {
-    const { supabase, user } = await getAuthenticatedSupabase(event)
-
-    // Set the session for RLS to work properly
-    const authHeader = getHeader(event, 'authorization')
-    const token = authHeader?.substring(7)
-    
-    if (token) {
-      await supabase.auth.setSession({
-        access_token: token,
-        refresh_token: ''
-      })
-    }
+    const { userId } = await requireAuth(event)
 
     const form = await readMultipartFormData(event)
 
@@ -74,7 +66,7 @@ export default defineEventHandler(async (event) => {
       })
     }
 
-    console.log('[Upload] Starting upload for user:', user.id, {
+    console.log('[Upload] Starting upload for user:', userId, {
       filename: file.filename,
       size: fileSizeMB.toFixed(2) + 'MB',
       courseName,
@@ -82,65 +74,48 @@ export default defineEventHandler(async (event) => {
       conversationId
     })
 
+    // Upload to Cloudflare R2
     const timestamp = Date.now()
-    const fileName = `${user.id}/${timestamp}_${file.filename}`
+    const fileName = `${userId}/${timestamp}_${file.filename}`
 
-    const { data: uploadData, error: uploadError } = await supabase.storage
-      .from('learning-materials')
-      .upload(fileName, file.data, {
-        contentType: 'application/pdf',
-        upsert: false
-      })
+    const { key, url } = await uploadToR2(fileName, file.data, 'application/pdf')
 
-    if (uploadError) {
-      console.error('[Upload] Storage upload failed:', uploadError.message)
-      throw createError({
-        statusCode: 500,
-        message: `Storage error: ${uploadError.message}`
-      })
-    }
+    console.log('[Upload] File uploaded to R2:', key)
 
-    console.log('[Upload] File uploaded to storage:', uploadData.path)
+    // Save metadata to MongoDB
+    await connectDB()
 
-    const { data: publicUrlData } = supabase.storage
-      .from('learning-materials')
-      .getPublicUrl(fileName)
+    const material = await LearningMaterial.create({
+      userId,
+      conversationId: conversationId || null,
+      courseName,
+      materialType,
+      description: description || '',
+      filePath: key,
+      fileSize: file.data.length,
+      originalFilename: file.filename || 'unknown.pdf'
+    })
 
-    const { data: materialData, error: insertError } = await supabase
-      .from('learning_materials')
-      .insert({
-        user_id: user.id,
-        conversation_id: conversationId || null,
-        course_name: courseName,
-        material_type: materialType,
-        description: description || '',
-        file_path: uploadData.path,
-        file_size: file.data.length,
-        original_filename: file.filename || 'unknown.pdf'
-      })
-      .select()
-      .single()
+    console.log('[Upload] Material saved to database:', material._id)
 
-    if (insertError) {
-      console.error('[Upload] Database insert failed:', insertError.message, insertError.details)
-
-      await supabase.storage
-        .from('learning-materials')
-        .remove([fileName])
-
-      throw createError({
-        statusCode: 500,
-        message: `Database error: ${insertError.message}`
-      })
-    }
-
-    console.log('[Upload] Material saved to database:', materialData.id)
+    // Get signed URL for temporary access
+    const signedUrl = await getSignedR2Url(key, 3600) // 1 hour
 
     return {
       success: true,
       data: {
-        ...materialData,
-        publicUrl: publicUrlData.publicUrl
+        id: material._id.toString(),
+        userId: material.userId.toString(),
+        conversationId: material.conversationId?.toString() || null,
+        courseName: material.courseName,
+        materialType: material.materialType,
+        description: material.description,
+        filePath: material.filePath,
+        fileSize: material.fileSize,
+        originalFilename: material.originalFilename,
+        createdAt: material.createdAt,
+        updatedAt: material.updatedAt,
+        publicUrl: signedUrl
       }
     }
   } catch (error: any) {
@@ -151,3 +126,4 @@ export default defineEventHandler(async (event) => {
     })
   }
 })
+

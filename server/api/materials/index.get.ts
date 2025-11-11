@@ -1,38 +1,40 @@
-import { supabase } from '~/server/utils/supabase'
+import { requireAuth } from '~/server/utils/auth'
+import { connectDB } from '~/server/utils/mongodb'
+import { LearningMaterial } from '~/server/models/LearningMaterial'
 
 export default defineEventHandler(async (event) => {
+  const { userId } = await requireAuth(event)
+
+  await connectDB()
+
   try {
-    const query = getQuery(event)
-    const userId = query.userId as string
+    const materials = await LearningMaterial.find({ userId })
+      .sort({ createdAt: -1 })
+      .lean()
 
-    if (!userId) {
-      throw createError({
-        statusCode: 400,
-        message: 'User ID is required'
-      })
-    }
-
-    const { data, error } = await supabase
-      .from('learning_materials')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-
-    if (error) {
-      throw createError({
-        statusCode: 500,
-        message: error.message
-      })
-    }
+    const transformedMaterials = materials.map(mat => ({
+      id: mat._id.toString(),
+      userId: mat.userId.toString(),
+      conversationId: mat.conversationId?.toString() || null,
+      courseName: mat.courseName,
+      materialType: mat.materialType,
+      description: mat.description,
+      filePath: mat.filePath,
+      fileSize: mat.fileSize,
+      originalFilename: mat.originalFilename,
+      createdAt: mat.createdAt,
+      updatedAt: mat.updatedAt
+    }))
 
     return {
       success: true,
-      data
+      data: transformedMaterials
     }
   } catch (error: any) {
     throw createError({
-      statusCode: error.statusCode || 500,
-      message: error.message || 'Failed to fetch materials'
+      statusCode: 500,
+      message: 'Failed to fetch materials'
     })
   }
 })
+

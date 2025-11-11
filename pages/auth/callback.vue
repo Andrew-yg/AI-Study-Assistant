@@ -2,7 +2,7 @@
   <div class="callback-page">
     <div class="loading-container">
       <div class="spinner"></div>
-      <p>Completing authentication...</p>
+      <p>{{ message }}</p>
     </div>
   </div>
 </template>
@@ -10,44 +10,39 @@
 <script setup lang="ts">
 const router = useRouter()
 const route = useRoute()
-const { initAuth } = useAuth()
+const { setAuthToken, initAuth } = useAuth()
+const message = ref('Signing you in...')
 
 onMounted(async () => {
-  try {
-    const { $supabase } = useNuxtApp()
-    
-    // Check for OAuth error in URL hash
-    const hashParams = new URLSearchParams(window.location.hash.substring(1))
-    const error = hashParams.get('error')
-    const errorDescription = hashParams.get('error_description')
+  const token = route.query.token as string
+  const error = route.query.error as string
 
-    if (error) {
-      console.error('OAuth error:', error, errorDescription)
+  if (error) {
+    message.value = 'Authentication failed. Redirecting...'
+    setTimeout(() => {
       router.push('/')
-      return
-    }
+    }, 2000)
+    return
+  }
 
-    // Let Supabase handle the OAuth callback and set the session
-    const { data, error: sessionError } = await $supabase.auth.getSession()
+  if (token) {
+    // Store token
+    setAuthToken(token)
     
-    if (sessionError) {
-      console.error('Session error:', sessionError)
-      router.push('/')
-      return
-    }
-
-    // Re-initialize auth to update the user state
+    // Initialize auth to fetch user data
     await initAuth()
-
-    // If we have a session, redirect to chat
-    if (data?.session) {
-      await router.push('/chat')
-    } else {
+    
+    message.value = 'Success! Redirecting...'
+    
+    // Redirect to chat
+    setTimeout(() => {
+      router.push('/chat')
+    }, 1000)
+  } else {
+    message.value = 'No token received. Redirecting...'
+    setTimeout(() => {
       router.push('/')
-    }
-  } catch (error) {
-    console.error('Callback error:', error)
-    router.push('/')
+    }, 2000)
   }
 })
 </script>

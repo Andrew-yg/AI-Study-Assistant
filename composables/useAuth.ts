@@ -1,92 +1,85 @@
-import type { User, Session } from '@supabase/supabase-js'
+export interface User {
+  id: string
+  email: string
+  name: string
+  avatar?: string
+}
 
 export const useAuth = () => {
   const user = useState<User | null>('auth-user', () => null)
-  const session = useState<Session | null>('auth-session', () => null)
   const loading = useState<boolean>('auth-loading', () => true)
+  const token = useState<string | null>('auth-token', () => null)
 
   const initAuth = async () => {
     if (!process.client) return
 
     loading.value = true
     try {
-      const { $supabase } = useNuxtApp()
-      const { data: { session: currentSession } } = await $supabase.auth.getSession()
-      session.value = currentSession
-      user.value = currentSession?.user || null
-
-      $supabase.auth.onAuthStateChange((_event, newSession) => {
-        session.value = newSession
-        user.value = newSession?.user || null
-      })
+      // Get token from localStorage
+      const storedToken = localStorage.getItem('auth_token')
+      
+      if (storedToken) {
+        token.value = storedToken
+        
+        // Verify token and get user info
+        const response = await $fetch('/api/auth/me', {
+          headers: {
+            Authorization: `Bearer ${storedToken}`
+          }
+        })
+        
+        if (response.success && response.user) {
+          user.value = response.user
+        } else {
+          // Invalid token
+          localStorage.removeItem('auth_token')
+          token.value = null
+          user.value = null
+        }
+      }
     } catch (error) {
       console.error('Auth initialization error:', error)
+      localStorage.removeItem('auth_token')
+      token.value = null
+      user.value = null
     } finally {
       loading.value = false
     }
   }
 
   const signInWithGoogle = async () => {
-    const { $supabase } = useNuxtApp()
-    const origin = window.location.origin
-    const { data, error } = await $supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${origin}/auth/callback`
-      }
-    })
-
-    if (error) {
-      console.error('Google OAuth error:', error)
-      throw error
-    }
-
-    if (data?.url) {
-      window.location.href = data.url
-    }
-
-    return data
-  }
-
-  const signInWithGithub = async () => {
-    const { $supabase } = useNuxtApp()
-    const origin = window.location.origin
-    const { data, error } = await $supabase.auth.signInWithOAuth({
-      provider: 'github',
-      options: {
-        redirectTo: `${origin}/auth/callback`
-      }
-    })
-
-    if (error) {
-      console.error('GitHub OAuth error:', error)
-      throw error
-    }
-
-    if (data?.url) {
-      window.location.href = data.url
-    }
-
-    return data
+    // Redirect to Google OAuth endpoint
+    window.location.href = '/api/auth/google'
   }
 
   const signOut = async () => {
-    const { $supabase } = useNuxtApp()
-    const { error } = await $supabase.auth.signOut()
-    if (error) {
-      throw error
+    try {
+      await $fetch('/api/auth/logout', { method: 'POST' })
+    } catch (error) {
+      console.error('Logout error:', error)
+    } finally {
+      // Clear local state
+      localStorage.removeItem('auth_token')
+      token.value = null
+      user.value = null
+      
+      // Redirect to home
+      navigateTo('/')
     }
-    user.value = null
-    session.value = null
+  }
+
+  const setAuthToken = (newToken: string) => {
+    token.value = newToken
+    localStorage.setItem('auth_token', newToken)
   }
 
   return {
     user,
-    session,
     loading,
+    token,
     initAuth,
     signInWithGoogle,
-    signInWithGithub,
-    signOut
+    signOut,
+    setAuthToken
   }
 }
