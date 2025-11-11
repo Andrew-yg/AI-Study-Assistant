@@ -88,7 +88,7 @@ definePageMeta({
   middleware: 'auth'
 })
 
-const { user, signOut } = useAuth()
+const { user, token, signOut } = useAuth()
 const router = useRouter()
 const conversationsAPI = useConversations()
 
@@ -239,11 +239,7 @@ const handleFileUpload = async (uploadData: any) => {
       if (!currentSessionId.value) return
     }
 
-    // Get authentication token
-    const { $supabase } = useNuxtApp()
-    const { data: { session } } = await $supabase.auth.getSession()
-    
-    if (!session?.access_token) {
+    if (!token.value) {
       throw new Error('No authentication token available')
     }
 
@@ -260,7 +256,7 @@ const handleFileUpload = async (uploadData: any) => {
     const response = await $fetch('/api/upload', {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${session.access_token}`
+        Authorization: `Bearer ${token.value}`
       },
       body: formData
     })

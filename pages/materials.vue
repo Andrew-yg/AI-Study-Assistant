@@ -90,9 +90,20 @@ definePageMeta({
   middleware: 'auth'
 })
 
-import type { LearningMaterial } from '~/utils/supabase'
+interface LearningMaterial {
+  id: string
+  user_id: string
+  course_name: string
+  material_type: string
+  description: string
+  file_path: string
+  file_size: number
+  original_filename: string
+  created_at: string
+  updated_at: string
+}
 
-const { user } = useAuth()
+const { user, token } = useAuth()
 const materials = ref<LearningMaterial[]>([])
 const loading = ref(true)
 const showUploadModal = ref(false)
@@ -108,25 +119,31 @@ onMounted(async () => {
 })
 
 const fetchMaterials = async () => {
-  if (!user.value) return
+  if (!user.value || !token.value) return
 
   try {
     loading.value = true
     console.log('[Materials] Fetching materials...')
-    const { $supabase } = useNuxtApp()
-    const { data: { session } } = await $supabase.auth.getSession()
-    
-    if (!session?.access_token) {
-      console.error('[Materials] No session token for fetch')
-      return
-    }
 
-    const response = await $fetch(`/api/materials?userId=${user.value.id}`, {
+    const response = await $fetch('/api/materials', {
       headers: {
-        Authorization: `Bearer ${session.access_token}`
+        Authorization: `Bearer ${token.value}`
       }
     })
-    materials.value = response.data || []
+    
+    // Transform API response to match UI expectations
+    materials.value = (response.data || []).map((item: any) => ({
+      id: item.id,
+      user_id: item.userId,
+      course_name: item.courseName,
+      material_type: item.materialType,
+      description: item.description,
+      file_path: item.filePath,
+      file_size: item.fileSize,
+      original_filename: item.originalFilename,
+      created_at: item.createdAt,
+      updated_at: item.updatedAt
+    }))
     console.log('[Materials] Loaded', materials.value.length, 'materials')
   } catch (error) {
     console.error('[Materials] Failed to fetch materials:', error)
@@ -136,21 +153,13 @@ const fetchMaterials = async () => {
 }
 
 const handleUpload = async (uploadData: any) => {
-  if (!user.value) {
+  if (!user.value || !token.value) {
     alert('You must be logged in to upload files')
     return
   }
 
   try {
     console.log('[Materials] Starting upload...')
-    const { $supabase } = useNuxtApp()
-    const { data: { session } } = await $supabase.auth.getSession()
-    
-    if (!session?.access_token) {
-      console.error('[Materials] No session token available')
-      alert('Authentication error. Please try logging in again.')
-      return
-    }
 
     const formData = new FormData()
     formData.append('file', uploadData.file)
@@ -164,7 +173,7 @@ const handleUpload = async (uploadData: any) => {
       method: 'POST',
       body: formData,
       headers: {
-        Authorization: `Bearer ${session.access_token}`
+        Authorization: `Bearer ${token.value}`
       }
     })
 
@@ -182,22 +191,19 @@ const editMaterial = (material: LearningMaterial) => {
 }
 
 const handleEdit = async (materialId: string, updates: any) => {
+  if (!token.value) {
+    alert('Authentication error. Please try logging in again.')
+    return
+  }
+
   try {
     console.log('[Materials] Editing material:', materialId)
-    const { $supabase } = useNuxtApp()
-    const { data: { session } } = await $supabase.auth.getSession()
-    
-    if (!session?.access_token) {
-      console.error('[Materials] No session token for edit')
-      alert('Authentication error. Please try logging in again.')
-      return
-    }
 
     await $fetch(`/api/materials/${materialId}`, {
       method: 'PUT',
       body: updates,
       headers: {
-        Authorization: `Bearer ${session.access_token}`
+        Authorization: `Bearer ${token.value}`
       }
     })
 
@@ -215,21 +221,18 @@ const deleteMaterial = async (materialId: string) => {
     return
   }
 
+  if (!token.value) {
+    alert('Authentication error. Please try logging in again.')
+    return
+  }
+
   try {
     console.log('[Materials] Deleting material:', materialId)
-    const { $supabase } = useNuxtApp()
-    const { data: { session } } = await $supabase.auth.getSession()
-    
-    if (!session?.access_token) {
-      console.error('[Materials] No session token for delete')
-      alert('Authentication error. Please try logging in again.')
-      return
-    }
 
     await $fetch(`/api/materials/${materialId}`, {
       method: 'DELETE',
       headers: {
-        Authorization: `Bearer ${session.access_token}`
+        Authorization: `Bearer ${token.value}`
       }
     })
 

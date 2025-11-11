@@ -62,7 +62,18 @@
 </template>
 
 <script setup lang="ts">
-import type { LearningMaterial } from '~/utils/supabase'
+interface LearningMaterial {
+  id: string
+  user_id: string
+  course_name: string
+  material_type: string
+  description: string
+  file_path: string
+  file_size: number
+  original_filename: string
+  created_at: string
+  updated_at: string
+}
 
 const props = defineProps<{
   material: LearningMaterial
