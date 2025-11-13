@@ -5,6 +5,10 @@
   "scripts": {
     "build": "nuxt build",
     "dev": "HOST=0.0.0.0 nuxt dev",
+    "dev:rag": "cd server/python-services/rag-service && python main.py",
+    "dev:agent": "cd server/python-services/agent-service && python main.py",
+    "dev:quiz": "cd server/python-services/quiz-service && python main.py",
+    "dev:all": "concurrently \"npm run dev\" \"npm run dev:rag\" \"npm run dev:agent\" \"npm run dev:quiz\"",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare"
@@ -19,13 +23,16 @@
     "multer": "^2.0.2",
     "nuxt": "^3.13.0",
     "passport": "^0.7.0",
-    "passport-google-oauth20": "^2.0.0"
+    "passport-google-oauth20": "^2.0.0",
+    "zod": "^3.22.0"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/multer": "^2.0.0",
+    "@types/node": "^20.0.0",
     "@types/passport": "^1.0.17",
-    "@types/passport-google-oauth20": "^2.0.17"
+    "@types/passport-google-oauth20": "^2.0.17",
+    "concurrently": "^9.0.0"
   }
 }
