@@ -79,7 +79,7 @@ R2_BUCKET_NAME=ai-study-materials
 #### 无需 R2 的功能（可立即测试）：
 - ✅ Google OAuth 登录/登出
 - ✅ 创建对话
-- ✅ 发送消息
+- ✅ 发送消息（带 Agent 回复，需启动 python agent-service）
 - ✅ 查看对话列表
 - ✅ 更新对话标题
 - ✅ 删除对话
@@ -104,6 +104,14 @@ pkill -f "nuxt dev"
 ```bash
 npm run dev
 ```
+
+### 启动 AI Agent（Python）
+```bash
+npm run dev:agent
+```
+- 端口：`http://localhost:8002`
+- 依赖：`.env` 中的 `OPENAI_API_KEY`、`BRAVE_SEARCH_API_KEY`、`RAG_SERVICE_URL`
+- 可与 `npm run dev` 同时运行，或使用 `npm run dev:all` 启动所有服务
 
 ### 安装依赖（如果需要）
 ```bash
@@ -161,9 +169,10 @@ ERROR  WebSocket server error: Port 24678 is already in use
 - `PUT /api/conversations/:id` - 更新对话
 - `DELETE /api/conversations/:id` - 删除对话
 
-### 消息
+### 消息 / Agent
 - `GET /api/messages/:conversationId` - 获取对话消息
-- `POST /api/messages` - 发送消息
+- `POST /api/messages` - 创建系统消息（例如上传提示）
+- `POST /api/agent/chat` - 调用 AI Agent（自动调用 RAG + Brave Search）
 
 ### 材料
 - `GET /api/materials` - 获取所有材料

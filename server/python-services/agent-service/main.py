@@ -13,6 +13,7 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent))
 
 from shared.config import settings
+from .service import create_orchestrator
 
 # 创建 FastAPI 应用
 app = FastAPI(
@@ -20,6 +21,8 @@ app = FastAPI(
     description="AI Agent 对话服务",
     version="1.0.0"
 )
+
+orchestrator = create_orchestrator()
 
 # 配置 CORS
 app.add_middleware(
@@ -44,7 +47,8 @@ class ChatRequest(BaseModel):
     message: str
     conversation_id: str
     user_id: str
-    history: Optional[List[ChatMessage]] = []
+    history: Optional[List[ChatMessage]] = None
+    material_ids: Optional[List[str]] = None
 
 
 class ChatResponse(BaseModel):
@@ -75,11 +79,20 @@ async def chat(request: ChatRequest):
     - 生成回复
     """
     try:
-        # TODO: 实现 Agent 对话逻辑（Week 3）
+        result = await orchestrator.generate_reply(
+            message=request.message,
+            user_id=request.user_id,
+            history=[{"role": item.role, "content": item.content} for item in (request.history or [])],
+            material_ids=request.material_ids,
+        )
+
         return ChatResponse(
-            message="Agent chat endpoint ready. Your message: " + request.message,
-            tool_calls=[],
-            metadata={"conversation_id": request.conversation_id}
+            message=result["message"],
+            tool_calls=result.get("tool_calls"),
+            metadata={
+                "conversation_id": request.conversation_id,
+                **(result.get("metadata") or {}),
+            }
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

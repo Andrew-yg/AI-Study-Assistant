@@ -13,6 +13,9 @@ export default defineNuxtConfig({
     r2AccessKeyId: process.env.R2_ACCESS_KEY_ID,
     r2SecretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
     r2BucketName: process.env.R2_BUCKET_NAME,
+  ragServiceUrl: process.env.RAG_SERVICE_URL || 'http://localhost:8001',
+  agentServiceUrl: process.env.AGENT_SERVICE_URL || 'http://localhost:8002',
+  quizServiceUrl: process.env.QUIZ_SERVICE_URL || 'http://localhost:8003',
     
     // Public keys (client-side accessible)
     public: {

@@ -265,7 +265,8 @@ const renameSession = async (sessionId: string) => {
 }
 
 const sendMessage = async () => {
-  if (!inputMessage.value.trim() || loading.value) return
+  const trimmed = inputMessage.value.trim()
+  if (!trimmed || loading.value) return
 
   try {
     if (!currentSessionId.value) {
@@ -273,36 +274,43 @@ const sendMessage = async () => {
       if (!currentSessionId.value) return
     }
 
-    const userContent = inputMessage.value
-    inputMessage.value = ''
-    loading.value = true
-
-    const userMessage = await conversationsAPI.sendMessage(
-      currentSessionId.value,
-      'user',
-      userContent
-    )
-    messages.value.push(userMessage)
-
-    const session = chatSessions.value.find(s => s.id === currentSessionId.value)
-    if (session && session.title === 'New Chat') {
-      const newTitle = userContent.substring(0, 50)
-      await conversationsAPI.updateConversation(currentSessionId.value, newTitle)
-      session.title = newTitle
+    const conversationId = currentSessionId.value
+    const tempId = `temp-${Date.now()}`
+    const tempMessage: DBMessage = {
+      id: tempId,
+      conversationId,
+      role: 'user',
+      content: trimmed,
+      createdAt: new Date().toISOString()
     }
 
-    await new Promise(resolve => setTimeout(resolve, 500))
+    inputMessage.value = ''
+    loading.value = true
+    messages.value.push(tempMessage)
 
-    const aiMessage = await conversationsAPI.sendMessage(
-      currentSessionId.value,
-      'assistant',
-      'This is a demo response. Connect your AI service to get real responses based on your uploaded materials.'
-    )
-    messages.value.push(aiMessage)
+    const response = await conversationsAPI.sendAgentMessage(conversationId, trimmed)
 
-  } catch (error) {
-    console.error('Failed to send message:', error)
-    alert('Failed to send message')
+    const tempIndex = messages.value.findIndex(msg => msg.id === tempId)
+    if (tempIndex !== -1) {
+      messages.value[tempIndex] = response.userMessage
+    } else {
+      messages.value.push(response.userMessage)
+    }
+
+    messages.value.push(response.assistantMessage)
+
+    const session = chatSessions.value.find(s => s.id === conversationId)
+    if (session && session.title === 'New Chat') {
+      const newTitle = trimmed.substring(0, 50)
+      await conversationsAPI.updateConversation(conversationId, newTitle)
+      session.title = newTitle
+    }
+  } catch (error: any) {
+    console.error('[Chat] Failed to send message:', error)
+    if (currentSessionId.value) {
+      await selectSession(currentSessionId.value)
+    }
+    alert('Agent failed to respond. Please try again in a moment.')
   } finally {
     loading.value = false
   }

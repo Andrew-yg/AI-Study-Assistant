@@ -20,6 +20,8 @@ class Settings:
     
     # OpenAI
     OPENAI_API_KEY: str = os.getenv('OPENAI_API_KEY', '')
+    OPENAI_EMBEDDING_MODEL: str = os.getenv('OPENAI_EMBEDDING_MODEL', 'text-embedding-3-large')
+    OPENAI_COMPLETION_MODEL: str = os.getenv('OPENAI_COMPLETION_MODEL', 'gpt-4o-mini')
     
     # Brave Search
     BRAVE_SEARCH_API_KEY: str = os.getenv('BRAVE_SEARCH_API_KEY', '')
@@ -34,6 +36,12 @@ class Settings:
     R2_ACCESS_KEY_ID: str = os.getenv('R2_ACCESS_KEY_ID', '')
     R2_SECRET_ACCESS_KEY: str = os.getenv('R2_SECRET_ACCESS_KEY', '')
     R2_BUCKET_NAME: str = os.getenv('R2_BUCKET_NAME', '')
+    R2_PUBLIC_BASE_URL: str = os.getenv('R2_PUBLIC_BASE_URL', '')
+
+    # MongoDB 向量存储配置
+    MONGODB_VECTOR_DB: str = os.getenv('MONGODB_VECTOR_DB', 'AIAssistant')
+    MONGODB_VECTOR_COLLECTION: str = os.getenv('MONGODB_VECTOR_COLLECTION', 'rag_vectors')
+    MONGODB_VECTOR_INDEX: str = os.getenv('MONGODB_VECTOR_INDEX', 'vector_index')
     
     @classmethod
     def validate(cls):

@@ -2,7 +2,7 @@
 RAG 服务 - 主入口
 提供 PDF 处理和语义检索功能
 """
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
@@ -13,6 +13,7 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent))
 
 from shared.config import settings
+from .service import rag_pipeline
 
 # 创建 FastAPI 应用
 app = FastAPI(
@@ -67,7 +68,11 @@ async def health_check():
 
 
 @app.post("/process")
-async def process_document(file: UploadFile = File(...), material_id: str = None, user_id: str = None):
+async def process_document(
+    file: UploadFile = File(...),
+    material_id: str = Form(...),
+    user_id: str = Form(...)
+):
     """
     处理上传的 PDF 文件
     - 提取文本
@@ -76,13 +81,21 @@ async def process_document(file: UploadFile = File(...), material_id: str = None
     - 存储到 MongoDB Vector Store
     """
     try:
-        # TODO: 实现 PDF 处理逻辑（Week 2）
+        file_bytes = await file.read()
+        result = await rag_pipeline.process_document(
+            file_bytes=file_bytes,
+            filename=file.filename or "document.pdf",
+            material_id=material_id,
+            user_id=user_id,
+        )
+
         return {
             "status": "success",
-            "message": "PDF processing endpoint ready",
             "material_id": material_id,
             "user_id": user_id,
-            "filename": file.filename
+            "filename": result.filename,
+            "documents": result.document_count,
+            "chunk_size": result.chunk_count,
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -97,12 +110,14 @@ async def query_documents(request: QueryRequest):
     - 生成答案
     """
     try:
-        # TODO: 实现 RAG 查询逻辑（Week 2）
-        return QueryResponse(
-            answer="RAG query endpoint ready",
-            sources=[],
-            confidence=0.0
+        payload = await rag_pipeline.query(
+            question=request.question,
+            user_id=request.user_id,
+            material_ids=request.material_ids,
+            top_k=request.top_k,
         )
+
+        return QueryResponse(**payload)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

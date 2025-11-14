@@ -2,6 +2,7 @@ import { requireAuth } from '~/server/utils/auth'
 import { connectDB } from '~/server/utils/mongodb'
 import { LearningMaterial } from '~/server/models/LearningMaterial'
 import { uploadToR2, getSignedR2Url } from '~/server/utils/r2'
+import { processMaterialWithRag } from '~/server/utils/rag'
 
 export default defineEventHandler(async (event) => {
   try {
@@ -97,6 +98,29 @@ export default defineEventHandler(async (event) => {
     })
 
     console.log('[Upload] Material saved to database:', material._id)
+
+    try {
+      await LearningMaterial.findByIdAndUpdate(material._id, {
+        processingStatus: 'processing',
+        processingError: null,
+      })
+
+      const ragResponse = await processMaterialWithRag(material.toObject(), file.data)
+
+      await LearningMaterial.findByIdAndUpdate(material._id, {
+        processingStatus: 'processed',
+        processedAt: new Date(),
+        vectorDocumentCount: ragResponse.documents,
+      })
+
+      console.log('[Upload] RAG processing complete:', ragResponse)
+    } catch (ragError: any) {
+      console.error('[Upload] RAG processing failed:', ragError)
+      await LearningMaterial.findByIdAndUpdate(material._id, {
+        processingStatus: 'failed',
+        processingError: ragError.message || 'Unknown error'
+      })
+    }
 
     // Get signed URL for temporary access
     const signedUrl = await getSignedR2Url(key, 3600) // 1 hour

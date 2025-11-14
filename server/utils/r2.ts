@@ -1,4 +1,5 @@
 import { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3'
+import type { Readable } from 'node:stream'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 
 const config = useRuntimeConfig()
@@ -56,4 +57,22 @@ export async function getSignedR2Url(key: string, expiresIn = 3600) {
   })
 
   return await getSignedUrl(r2Client, command, { expiresIn })
+}
+
+export async function downloadFromR2(key: string) {
+  const command = new GetObjectCommand({
+    Bucket: R2_BUCKET_NAME,
+    Key: key,
+  })
+
+  const response = await r2Client.send(command)
+
+  const chunks: Buffer[] = []
+  const bodyStream = response.Body as Readable
+
+  for await (const chunk of bodyStream) {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
+  }
+
+  return Buffer.concat(chunks)
 }

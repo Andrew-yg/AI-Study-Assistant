@@ -14,6 +14,10 @@ export interface ILearningMaterial {
   filePath: string
   fileSize: number
   originalFilename: string
+  processingStatus?: 'pending' | 'processing' | 'processed' | 'failed'
+  processedAt?: Date | null
+  processingError?: string | null
+  vectorDocumentCount?: number
   createdAt?: Date
   updatedAt?: Date
 }
@@ -58,6 +62,24 @@ const LearningMaterialSchema = new Schema<ILearningMaterial>(
     originalFilename: {
       type: String,
       required: true,
+    },
+    processingStatus: {
+      type: String,
+      enum: ['pending', 'processing', 'processed', 'failed'],
+      default: 'pending',
+      index: true,
+    },
+    processedAt: {
+      type: Date,
+      default: null,
+    },
+    processingError: {
+      type: String,
+      default: null,
+    },
+    vectorDocumentCount: {
+      type: Number,
+      default: 0,
     },
   },
   {
