@@ -4,11 +4,12 @@
   "type": "module",
   "scripts": {
     "build": "nuxt build",
-  "dev": "HOST=0.0.0.0 nuxt dev --no-fork",
+    "dev": "concurrently -k -s first -n web,rag,agent,quiz \"npm:dev:web\" \"npm:dev:rag\" \"npm:dev:agent\" \"npm:dev:quiz\"",
+    "dev:web": "HOST=0.0.0.0 nuxt dev --no-fork",
     "dev:rag": "cd server/python-services/rag-service && python main.py",
     "dev:agent": "cd server/python-services/agent-service && python main.py",
     "dev:quiz": "cd server/python-services/quiz-service && python main.py",
-    "dev:all": "concurrently \"npm run dev\" \"npm run dev:rag\" \"npm run dev:agent\" \"npm run dev:quiz\"",
+    "dev:all": "npm run dev",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare"

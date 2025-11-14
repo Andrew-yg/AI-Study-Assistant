@@ -98,7 +98,10 @@ class RAGPipeline:
         metadata_filters = MetadataFilters(filters=filters_list)
 
         storage_context = StorageContext.from_defaults(vector_store=self._vector_store)
-        index = VectorStoreIndex.from_vector_store(storage_context=storage_context)
+        index = VectorStoreIndex.from_vector_store(
+            vector_store=self._vector_store,
+            storage_context=storage_context,
+        )
         query_engine = index.as_query_engine(
             similarity_top_k=top_k,
             filters=metadata_filters,
@@ -108,16 +111,17 @@ class RAGPipeline:
 
         sources: List[Dict[str, str]] = []
         for node in response.source_nodes:
+            node_score = getattr(node, "score", None)
             sources.append({
                 "snippet": node.get_content(strip_newlines=False),
-                "score": node.score,
+                "score": node_score,
                 "metadata": node.metadata,
             })
 
         return {
             "answer": str(response),
             "sources": sources,
-            "confidence": float(response.score or 0.0),
+            "confidence": float(getattr(response, "score", 0.0) or 0.0),
         }
 
 

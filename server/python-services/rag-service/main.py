@@ -9,11 +9,17 @@ from typing import List, Optional
 import sys
 from pathlib import Path
 
-# 添加 shared 目录到 Python 路径
-sys.path.append(str(Path(__file__).parent.parent))
+# 添加当前服务目录和 shared 目录到 Python 路径，确保可作为脚本运行
+service_dir = Path(__file__).resolve().parent
+python_services_dir = service_dir.parent
+
+for extra_path in (service_dir, python_services_dir):
+    path_str = str(extra_path)
+    if path_str not in sys.path:
+        sys.path.append(path_str)
 
 from shared.config import settings
-from .service import rag_pipeline
+from service import rag_pipeline
 
 # 创建 FastAPI 应用
 app = FastAPI(

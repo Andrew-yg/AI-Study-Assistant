@@ -1,6 +1,7 @@
 import type { Buffer } from 'node:buffer'
 
 import type { ILearningMaterial } from '~/server/models/LearningMaterial'
+import { ensureServiceHealthy } from '~/server/utils/serviceHealth'
 
 interface RagProcessResponse {
   status: string
@@ -28,6 +29,8 @@ export async function processMaterialWithRag(material: ILearningMaterial, fileBu
     throw new Error('RAG service URL is not configured')
   }
 
+  await ensureServiceHealthy('rag')
+
   const formData = new FormData()
   const arrayBuffer = fileBuffer.buffer.slice(
     fileBuffer.byteOffset,
@@ -43,6 +46,7 @@ export async function processMaterialWithRag(material: ILearningMaterial, fileBu
   return await $fetch<RagProcessResponse>(`${config.ragServiceUrl}/process`, {
     method: 'POST',
     body: formData,
+    timeout: 45000,
   })
 }
 
@@ -52,6 +56,8 @@ export async function queryRag(params: { question: string; userId: string; mater
   if (!config.ragServiceUrl) {
     throw new Error('RAG service URL is not configured')
   }
+
+  await ensureServiceHealthy('rag')
 
   const { question, userId, materialIds, topK = 5 } = params
 
@@ -63,5 +69,6 @@ export async function queryRag(params: { question: string; userId: string; mater
       material_ids: materialIds,
       top_k: topK,
     },
+    timeout: 20000,
   })
 }

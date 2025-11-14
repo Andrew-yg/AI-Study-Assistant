@@ -4,15 +4,22 @@ Quiz 服务 - 主入口
 """
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from typing import List, Optional, Dict, Any
+from pydantic import BaseModel, Field
+from typing import List, Optional
 import sys
 from pathlib import Path
 
-# 添加 shared 目录到 Python 路径
-sys.path.append(str(Path(__file__).parent.parent))
+# 添加当前服务目录和 shared 目录到 Python 路径，确保可作为脚本运行
+service_dir = Path(__file__).resolve().parent
+python_services_dir = service_dir.parent
+
+for extra_path in (service_dir, python_services_dir):
+    path_str = str(extra_path)
+    if path_str not in sys.path:
+        sys.path.append(path_str)
 
 from shared.config import settings
+from generator import QuizGenerator
 
 # 创建 FastAPI 应用
 app = FastAPI(
@@ -35,34 +42,39 @@ app.add_middleware(
 
 class GenerateQuizRequest(BaseModel):
     """生成题目请求"""
-    material_id: str
+    material_ids: List[str] = Field(min_items=1)
     user_id: str
     question_type: str  # 'multiple_choice', 'true_false', 'short_answer'
     difficulty: str  # 'easy', 'medium', 'hard'
-    count: int = 5
+    count: int = Field(default=5, ge=1, le=10)
 
 
 class Question(BaseModel):
     """题目"""
-    type: str
     question: str
+    question_type: str
     options: Optional[List[str]] = None
     correct_answer: str
     explanation: str
     difficulty: str
+    tags: Optional[List[str]] = None
+    source_summary: Optional[str] = None
 
 
 class GenerateQuizResponse(BaseModel):
     """生成题目响应"""
     questions: List[Question]
+    material_summary: Optional[str] = None
 
 
 class EvaluateAnswerRequest(BaseModel):
     """评估答案请求"""
-    question_id: str
+    question: str
+    question_type: str
     user_answer: str
     correct_answer: str
-    question_type: str
+    explanation: Optional[str] = None
+    material_summary: Optional[str] = None
 
 
 class EvaluateAnswerResponse(BaseModel):
@@ -84,6 +96,9 @@ async def health_check():
     }
 
 
+generator = QuizGenerator()
+
+
 @app.post("/generate", response_model=GenerateQuizResponse)
 async def generate_quiz(request: GenerateQuizRequest):
     """
@@ -93,18 +108,17 @@ async def generate_quiz(request: GenerateQuizRequest):
     - 返回题目列表
     """
     try:
-        # TODO: 实现题目生成逻辑（Week 4）
+        result = await generator.generate_questions(
+            material_ids=request.material_ids,
+            user_id=request.user_id,
+            question_type=request.question_type,
+            difficulty=request.difficulty,
+            count=request.count,
+        )
+        questions = [Question(**item) for item in result.get("questions", [])]
         return GenerateQuizResponse(
-            questions=[
-                Question(
-                    type=request.question_type,
-                    question="Quiz generation endpoint ready",
-                    options=["Option A", "Option B", "Option C", "Option D"] if request.question_type == "multiple_choice" else None,
-                    correct_answer="Option A",
-                    explanation="This is a placeholder question",
-                    difficulty=request.difficulty
-                )
-            ]
+            questions=questions,
+            material_summary=result.get("material_summary"),
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -119,12 +133,15 @@ async def evaluate_answer(request: EvaluateAnswerRequest):
     - 提供反馈
     """
     try:
-        # TODO: 实现答案评估逻辑（Week 4）
-        return EvaluateAnswerResponse(
-            is_correct=True,
-            score=1.0,
-            feedback="Answer evaluation endpoint ready"
+        result = await generator.evaluate_answer(
+            question=request.question,
+            correct_answer=request.correct_answer,
+            user_answer=request.user_answer,
+            question_type=request.question_type,
+            explanation=request.explanation,
+            context_summary=request.material_summary,
         )
+        return EvaluateAnswerResponse(**result)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

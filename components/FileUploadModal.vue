@@ -101,7 +101,22 @@
 </template>
 
 <script setup lang="ts">
-const emit = defineEmits(['close', 'upload'])
+interface UploadPayload {
+  file: File
+  courseName: string
+  materialType: string
+  description: string
+}
+
+interface UploadCallbacks {
+  onSuccess?: () => void
+  onError?: (message?: string) => void
+}
+
+const emit = defineEmits<{
+  (e: 'close'): void
+  (e: 'upload', payload: UploadPayload, callbacks?: UploadCallbacks): void
+}>()
 
 const fileInput = ref<HTMLInputElement | null>(null)
 const selectedFile = ref<File | null>(null)
@@ -113,6 +128,16 @@ const formData = ref({
   materialType: '',
   description: ''
 })
+
+const resetForm = () => {
+  formData.value = {
+    courseName: '',
+    materialType: '',
+    description: ''
+  }
+  selectedFile.value = null
+  error.value = ''
+}
 
 const isFormValid = computed(() => {
   return formData.value.courseName.trim() &&
@@ -162,23 +187,34 @@ const formatFileSize = (bytes: number) => {
 }
 
 const handleUpload = async () => {
-  if (!isFormValid.value) return
+  if (!isFormValid.value || !selectedFile.value) return
 
   uploading.value = true
   error.value = ''
 
-  try {
-    const uploadData = {
-      file: selectedFile.value,
-      courseName: formData.value.courseName.trim(),
-      materialType: formData.value.materialType,
-      description: formData.value.description.trim()
+  const uploadData: UploadPayload = {
+    file: selectedFile.value,
+    courseName: formData.value.courseName.trim(),
+    materialType: formData.value.materialType,
+    description: formData.value.description.trim()
+  }
+
+  const callbacks: UploadCallbacks = {
+    onSuccess: () => {
+      resetForm()
+      uploading.value = false
+      emit('close')
+    },
+    onError: (message?: string) => {
+      error.value = message || 'Upload failed'
+      uploading.value = false
     }
-    emit('upload', uploadData)
+  }
+
+  try {
+    emit('upload', uploadData, callbacks)
   } catch (err: any) {
-    error.value = err.message || 'Upload failed'
-  } finally {
-    uploading.value = false
+    callbacks.onError?.(err?.message || 'Upload failed')
   }
 }
 </script>

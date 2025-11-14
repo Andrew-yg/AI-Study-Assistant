@@ -136,6 +136,11 @@ interface ConversationSummary {
   title: string
 }
 
+interface UploadCallbacks {
+  onSuccess?: () => void
+  onError?: (message?: string) => void
+}
+
 const { user, token } = useAuth()
 const conversationsAPI = useConversations()
 const materials = ref<LearningMaterial[]>([])
@@ -225,7 +230,7 @@ const fetchMaterials = async () => {
   }
 }
 
-const handleUpload = async (uploadData: any) => {
+const handleUpload = async (uploadData: any, callbacks?: UploadCallbacks) => {
   if (!user.value || !token.value) {
     alert('You must be logged in to upload files')
     return
@@ -258,9 +263,11 @@ const handleUpload = async (uploadData: any) => {
 
     console.log('[Materials] Upload successful')
     showUploadModal.value = false
+    callbacks?.onSuccess?.()
     await fetchMaterials()
   } catch (error: any) {
     console.error('[Materials] Upload failed:', error)
+    callbacks?.onError?.(error?.data?.message || error?.message || 'Upload failed')
     alert('Failed to upload file: ' + (error.message || 'Unknown error'))
   }
 }

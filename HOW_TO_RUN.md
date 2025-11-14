@@ -7,7 +7,8 @@
 - ✅ MongoDB 连接已配置
 - ✅ Google OAuth 已配置
 - ✅ 所有依赖已安装
-- ✅ 开发服务器运行在 **http://localhost:3001**
+- ✅ `npm run dev` 会同时启动 Nuxt + RAG + Agent + Quiz 服务
+- ✅ 开发服务器运行在 **http://localhost:3000**
 
 ---
 
@@ -18,12 +19,12 @@
 ### 本地访问
 打开浏览器访问：
 ```
-http://localhost:3001
+http://localhost:3000
 ```
 
 ### 网络访问（同一局域网设备）
 ```
-http://172.20.10.175:3001
+http://172.20.10.175:3000
 ```
 
 ---
@@ -33,7 +34,7 @@ http://172.20.10.175:3001
 ### 1. 健康检查
 测试 MongoDB 连接是否正常：
 ```bash
-curl http://localhost:3001/api/health
+curl http://localhost:3000/api/health
 ```
 
 预期返回：
@@ -48,7 +49,7 @@ curl http://localhost:3001/api/health
 ### 2. Google 登录
 在浏览器中访问：
 ```
-http://localhost:3001
+http://localhost:3000
 ```
 点击 "Sign in with Google" 按钮测试 OAuth 流程。
 
@@ -102,16 +103,18 @@ pkill -f "nuxt dev"
 
 ### 重启服务器
 ```bash
-npm run dev
+npm run dev   # 同时启动 Nuxt 与全部 Python 服务
 ```
 
-### 启动 AI Agent（Python）
+### 启动单个 Python 服务
+> `npm run dev` 已自动启动全部 Python 服务。仅在需要单独调试时使用以下命令。
+
 ```bash
-npm run dev:agent
+npm run dev:rag    # 端口 http://localhost:8001
+npm run dev:agent  # 端口 http://localhost:8002
+npm run dev:quiz   # 端口 http://localhost:8003
 ```
-- 端口：`http://localhost:8002`
-- 依赖：`.env` 中的 `OPENAI_API_KEY`、`BRAVE_SEARCH_API_KEY`、`RAG_SERVICE_URL`
-- 可与 `npm run dev` 同时运行，或使用 `npm run dev:all` 启动所有服务
+所有服务依赖 `.env` 中的 `OPENAI_API_KEY`，Agent 另外使用 `BRAVE_SEARCH_API_KEY`。
 
 ### 安装依赖（如果需要）
 ```bash
@@ -133,7 +136,7 @@ npm run preview
 ## 🐛 常见问题
 
 ### 端口被占用
-如果看到端口冲突错误，Nuxt 会自动使用其他端口（如 3001）。
+如果看到端口冲突错误，Nuxt 会自动使用其他端口（如 3000）。
 
 ### WebSocket 错误
 ```
@@ -190,7 +193,7 @@ ERROR  WebSocket server error: Port 24678 is already in use
 ## 🎯 下一步
 
 ### 立即可做：
-1. ✅ 在浏览器打开 http://localhost:3001
+1. ✅ 在浏览器打开 http://localhost:3000
 2. ✅ 测试 Google 登录
 3. ✅ 创建对话并发送消息
 4. ✅ 测试对话的增删改查

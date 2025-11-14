@@ -120,6 +120,15 @@ export default defineEventHandler(async (event) => {
         processingStatus: 'failed',
         processingError: ragError.message || 'Unknown error'
       })
+
+      throw createError({
+        statusCode: ragError.statusCode || 503,
+        message: ragError.message || 'RAG processing failed. Please ensure the rag-service is running.',
+        data: {
+          materialId: material._id.toString(),
+          serviceUrl: useRuntimeConfig().ragServiceUrl,
+        }
+      })
     }
 
     // Get signed URL for temporary access

@@ -99,7 +99,14 @@ BASE_URL=http://localhost:3000
 npm run dev
 ```
 
-访问: http://localhost:3000
+该命令会同时启动 Nuxt、RAG、Agent、Quiz 四个服务：
+
+- Web 应用：http://localhost:3000
+- RAG 服务：http://localhost:8001
+- Agent 服务：http://localhost:8002
+- Quiz 服务：http://localhost:8003
+
+> 只想运行前端？使用 `npm run dev:web`。
 
 ## 🧪 测试流程
 

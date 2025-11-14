@@ -14,13 +14,6 @@ export interface Message {
   createdAt: string
 }
 
-export interface AgentChatResult {
-  userMessage: Message
-  assistantMessage: Message
-  metadata?: Record<string, any>
-  toolCalls?: Array<Record<string, any>>
-}
-
 export const useConversations = () => {
   const { token } = useAuth()
 
@@ -118,38 +111,12 @@ export const useConversations = () => {
     return message
   }
 
-  const sendAgentMessage = async (
-    conversationId: string,
-    content: string
-  ): Promise<AgentChatResult> => {
-    const headers = getAuthHeaders()
-    const response = await $fetch<{ success: boolean } & AgentChatResult>(
-      '/api/agent/chat',
-      {
-        method: 'POST',
-        headers,
-        body: {
-          conversationId,
-          message: content
-        }
-      }
-    )
-
-    return {
-      userMessage: response.userMessage,
-      assistantMessage: response.assistantMessage,
-      metadata: response.metadata,
-      toolCalls: response.toolCalls
-    }
-  }
-
   return {
     fetchConversations,
     createConversation,
     updateConversation,
     deleteConversation,
     fetchMessages,
-    sendMessage,
-    sendAgentMessage
+    sendMessage
   }
 }

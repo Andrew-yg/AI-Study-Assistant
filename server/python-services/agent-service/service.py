@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any, AsyncGenerator, Dict, List, Optional
 
 import aiohttp
 from openai import AsyncOpenAI
@@ -50,93 +51,57 @@ class AgentOrchestrator:
 
         self._llm = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
 
-    async def generate_reply(
+    async def stream_chat(
         self,
         *,
         message: str,
         user_id: str,
         history: Optional[List[Dict[str, str]]] = None,
         material_ids: Optional[List[str]] = None,
-    ) -> Dict[str, Any]:
+    ) -> AsyncGenerator[bytes, None]:
         history = history or []
         material_ids = material_ids or []
 
-        tool_calls: List[ToolCall] = []
-        metadata: Dict[str, Any] = {
-            "model": settings.OPENAI_COMPLETION_MODEL,
-        }
+        (
+            rag_result,
+            web_results,
+            tool_calls,
+            metadata,
+        ) = await self._prepare_context(
+            message=message,
+            user_id=user_id,
+            material_ids=material_ids,
+        )
 
-        rag_result = None
-        if material_ids and settings.RAG_SERVICE_URL:
-            try:
-                rag_result = await self._query_rag(
-                    question=message,
-                    user_id=user_id,
-                    material_ids=material_ids,
-                )
-                metadata["rag_used"] = True
-                metadata["rag_sources"] = rag_result.get("sources", [])
-                tool_calls.append(
-                    ToolCall(
-                        name="rag_query",
-                        status="success",
-                        detail={
-                            "materials": len(material_ids),
-                            "sources": len(rag_result.get("sources", [])),
-                        },
-                    )
-                )
-            except Exception as err:
-                tool_calls.append(
-                    ToolCall(
-                        name="rag_query",
-                        status="error",
-                        detail={"error": str(err)},
-                    )
-                )
-
-        web_results = None
-        if self._should_use_web_search(message, bool(material_ids)):
-            try:
-                web_results = await self._search_web(message)
-                if web_results:
-                    metadata["web_used"] = True
-                    metadata["web_results"] = web_results
-                    tool_calls.append(
-                        ToolCall(
-                            name="brave_search",
-                            status="success",
-                            detail={"results": len(web_results)},
-                        )
-                    )
-            except Exception as err:
-                tool_calls.append(
-                    ToolCall(
-                        name="brave_search",
-                        status="error",
-                        detail={"error": str(err)},
-                    )
-                )
-
-        assistant_message = await self._call_llm(
+        accumulated_chunks: List[str] = []
+        async for delta in self._stream_llm(
             message=message,
             history=history,
             rag_result=rag_result,
             web_results=web_results,
-        )
+        ):
+            if delta:
+                accumulated_chunks.append(delta)
+                yield format_sse("token", {"delta": delta})
 
-        return {
-            "message": assistant_message,
-            "tool_calls": [
-                {
-                    "name": call.name,
-                    "status": call.status,
-                    "detail": call.detail,
-                }
-                for call in tool_calls
-            ],
-            "metadata": metadata,
-        }
+        final_message = "".join(accumulated_chunks).strip()
+        metadata["message"] = final_message
+
+        yield format_sse(
+            "metadata",
+            {
+                "message": final_message,
+                "metadata": metadata,
+                "tool_calls": [
+                    {
+                        "name": call.name,
+                        "status": call.status,
+                        "detail": call.detail,
+                    }
+                    for call in tool_calls
+                ],
+            },
+        )
 
     async def _query_rag(self, *, question: str, user_id: str, material_ids: List[str]) -> Dict[str, Any]:
         payload = {
@@ -188,19 +153,116 @@ class AgentOrchestrator:
                     )
                 return formatted
 
-    async def _call_llm(
+    async def _prepare_context(
+        self,
+        *,
+        message: str,
+        user_id: str,
+        material_ids: List[str],
+    ) -> tuple[Optional[Dict[str, Any]], Optional[List[Dict[str, str]]], List[ToolCall], Dict[str, Any]]:
+        tool_calls: List[ToolCall] = []
+        metadata: Dict[str, Any] = {
+            "model": settings.OPENAI_COMPLETION_MODEL,
+        }
+
+        rag_result: Optional[Dict[str, Any]] = None
+        if material_ids and settings.RAG_SERVICE_URL:
+            try:
+                rag_result = await self._query_rag(
+                    question=message,
+                    user_id=user_id,
+                    material_ids=material_ids,
+                )
+                metadata["rag_used"] = True
+                metadata["rag_sources"] = rag_result.get("sources", [])
+                tool_calls.append(
+                    ToolCall(
+                        name="rag_query",
+                        status="success",
+                        detail={
+                            "materials": len(material_ids),
+                            "sources": len(rag_result.get("sources", [])),
+                        },
+                    )
+                )
+            except Exception as err:
+                tool_calls.append(
+                    ToolCall(
+                        name="rag_query",
+                        status="error",
+                        detail={"error": str(err)},
+                    )
+                )
+
+        web_results: Optional[List[Dict[str, str]]] = None
+        if self._should_use_web_search(message, bool(material_ids)):
+            try:
+                web_results = await self._search_web(message)
+                if web_results:
+                    metadata["web_used"] = True
+                    metadata["web_results"] = web_results
+                    tool_calls.append(
+                        ToolCall(
+                            name="brave_search",
+                            status="success",
+                            detail={"results": len(web_results)},
+                        )
+                    )
+            except Exception as err:
+                tool_calls.append(
+                    ToolCall(
+                        name="brave_search",
+                        status="error",
+                        detail={"error": str(err)},
+                    )
+                )
+
+        return rag_result, web_results, tool_calls, metadata
+
+    async def _stream_llm(
         self,
         *,
         message: str,
         history: List[Dict[str, str]],
         rag_result: Optional[Dict[str, Any]],
         web_results: Optional[List[Dict[str, str]]],
-    ) -> str:
+    ) -> AsyncGenerator[str, None]:
+        messages = self._build_messages(
+            message=message,
+            history=history,
+            rag_result=rag_result,
+            web_results=web_results,
+        )
+
+        stream = await self._llm.chat.completions.create(
+            model=settings.OPENAI_COMPLETION_MODEL,
+            temperature=0.2,
+            messages=messages,
+            stream=True,
+        )
+
+        async for chunk in stream:
+            if not chunk.choices:
+                continue
+            delta = chunk.choices[0].delta.content
+            if delta:
+                yield delta
+
+    def _build_messages(
+        self,
+        *,
+        message: str,
+        history: List[Dict[str, str]],
+        rag_result: Optional[Dict[str, Any]],
+        web_results: Optional[List[Dict[str, str]]],
+    ) -> List[Dict[str, str]]:
         context_sections: List[str] = []
 
         if rag_result:
             sources_text = self._format_rag_sources(rag_result.get("sources", []))
-            context_sections.append(f"Course materials summary:\n{rag_result.get('answer', '').strip()}\n\nSources:\n{sources_text}")
+            context_sections.append(
+                f"Course materials summary:\n{rag_result.get('answer', '').strip()}\n\nSources:\n{sources_text}"
+            )
 
         if web_results:
             web_lines = []
@@ -219,17 +281,7 @@ class AgentOrchestrator:
 
         messages.extend(history)
         messages.append({"role": "user", "content": message})
-
-        response = await self._llm.chat.completions.create(
-            model=settings.OPENAI_COMPLETION_MODEL,
-            temperature=0.2,
-            messages=messages,
-        )
-
-        content = response.choices[0].message.content if response.choices else None
-        if not content:
-            raise RuntimeError("LLM returned empty response")
-        return content.strip()
+        return messages
 
     def _should_use_web_search(self, message: str, has_materials: bool) -> bool:
         if not settings.BRAVE_SEARCH_API_KEY:
@@ -264,3 +316,8 @@ class AgentOrchestrator:
 
 def create_orchestrator() -> AgentOrchestrator:
     return AgentOrchestrator()
+
+
+def format_sse(event: str, data: Dict[str, Any]) -> bytes:
+    payload = json.dumps(data, ensure_ascii=False)
+    return f"event: {event}\ndata: {payload}\n\n".encode("utf-8")

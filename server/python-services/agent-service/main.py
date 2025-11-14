@@ -4,16 +4,23 @@ Agent 服务 - 主入口
 """
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-from typing import List, Optional, Dict, Any
+from typing import List, Optional
 import sys
 from pathlib import Path
 
-# 添加 shared 目录到 Python 路径
-sys.path.append(str(Path(__file__).parent.parent))
+# 添加当前服务目录和 shared 目录到 Python 路径，确保可作为脚本运行
+service_dir = Path(__file__).resolve().parent
+python_services_dir = service_dir.parent
+
+for extra_path in (service_dir, python_services_dir):
+    path_str = str(extra_path)
+    if path_str not in sys.path:
+        sys.path.append(path_str)
 
 from shared.config import settings
-from .service import create_orchestrator
+from service import create_orchestrator
 
 # 创建 FastAPI 应用
 app = FastAPI(
@@ -51,13 +58,6 @@ class ChatRequest(BaseModel):
     material_ids: Optional[List[str]] = None
 
 
-class ChatResponse(BaseModel):
-    """Agent 对话响应"""
-    message: str
-    tool_calls: Optional[List[Dict[str, Any]]] = None
-    metadata: Optional[Dict[str, Any]] = None
-
-
 # ===== API 端点 =====
 
 @app.get("/health")
@@ -70,7 +70,7 @@ async def health_check():
     }
 
 
-@app.post("/chat", response_model=ChatResponse)
+@app.post("/chat")
 async def chat(request: ChatRequest):
     """
     Agent 对话接口
@@ -79,21 +79,15 @@ async def chat(request: ChatRequest):
     - 生成回复
     """
     try:
-        result = await orchestrator.generate_reply(
+        history = [{"role": item.role, "content": item.content} for item in (request.history or [])]
+        stream = orchestrator.stream_chat(
             message=request.message,
             user_id=request.user_id,
-            history=[{"role": item.role, "content": item.content} for item in (request.history or [])],
+            history=history,
             material_ids=request.material_ids,
         )
 
-        return ChatResponse(
-            message=result["message"],
-            tool_calls=result.get("tool_calls"),
-            metadata={
-                "conversation_id": request.conversation_id,
-                **(result.get("metadata") or {}),
-            }
-        )
+        return StreamingResponse(stream, media_type="text/event-stream")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

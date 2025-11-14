@@ -29,7 +29,7 @@ Error 400: redirect_uri_mismatch
 在 **Authorized redirect URIs** 部分，添加以下 URI：
 
 ```
-http://localhost:3001/api/auth/google/callback
+http://localhost:3000/api/auth/google/callback
 ```
 
 **可选（推荐）** - 同时添加 3000 端口作为备用：
@@ -61,7 +61,7 @@ npm run dev
 
 ## ✅ 测试 OAuth 流程
 
-1. 打开浏览器访问：http://localhost:3001
+1. 打开浏览器访问：http://localhost:3000
 2. 点击 **"Sign in with Google"** 按钮
 3. 应该会看到 Google 账户选择页面
 4. 选择账户后正常登录
@@ -71,7 +71,7 @@ npm run dev
 ## 📋 完整的重定向 URI 配置
 
 ### 开发环境（必须添加）
-✅ `http://localhost:3001/api/auth/google/callback` - 当前端口  
+✅ `http://localhost:3000/api/auth/google/callback` - 当前端口  
 ✅ `http://localhost:3000/api/auth/google/callback` - 备用端口
 
 ### 生产环境（部署时添加）
@@ -92,7 +92,7 @@ npm run dev
 **解决方法：**
 ```bash
 # 1. 清除浏览器缓存或使用无痕模式
-# 2. 确认 .env 文件中 BASE_URL=http://localhost:3001
+# 2. 确认 .env 文件中 BASE_URL=http://localhost:3000
 # 3. 重启服务器
 npm run dev
 ```
@@ -132,7 +132,7 @@ ERROR  [Auth] Google OAuth callback error: User validation failed: googleId: Pat
 ### 问题 4: 授权后无法跳转回应用
 
 **检查：**
-- [ ] 回调端点是否正常：http://localhost:3001/api/auth/google/callback
+- [ ] 回调端点是否正常：http://localhost:3000/api/auth/google/callback
 - [ ] MongoDB 连接是否正常
 - [ ] 浏览器控制台是否有错误
 
@@ -155,7 +155,7 @@ Google Cloud Console
 ### 3. 添加重定向 URI
 在 "Authorized redirect URIs" 部分：
 - 点击 "+ ADD URI" 按钮
-- 输入：`http://localhost:3001/api/auth/google/callback`
+- 输入：`http://localhost:3000/api/auth/google/callback`
 - 再次点击 "+ ADD URI" 添加：`http://localhost:3000/api/auth/google/callback`
 - 点击底部 "SAVE" 按钮
 
@@ -167,12 +167,12 @@ Google Cloud Console
 ```env
 GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=your-google-client-secret
-BASE_URL=http://localhost:3001
+BASE_URL=http://localhost:3000
 ```
 
 ### OAuth 参数
 - **Client ID**: `your-google-client-id.apps.googleusercontent.com`
-- **Redirect URI**: `http://localhost:3001/api/auth/google/callback`
+- **Redirect URI**: `http://localhost:3000/api/auth/google/callback`
 - **Scopes**: `openid email profile`
 - **Prompt**: `select_account` ✅ 允许选择账户
 
