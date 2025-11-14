@@ -28,17 +28,30 @@
         :key="session.id"
         :class="['session-item', { active: session.id === currentSessionId }]"
         @click="$emit('select-session', session.id)"
+        @contextmenu.prevent="$emit('rename-session', session.id)"
       >
         <div class="session-title" :title="session.title">{{ session.title }}</div>
-        <button
-          @click.stop="$emit('delete-session', session.id)"
-          class="delete-button"
-          title="Delete chat"
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
-          </svg>
-        </button>
+        <div class="session-actions">
+          <button
+            @click.stop="$emit('rename-session', session.id)"
+            class="rename-button"
+            title="Rename chat"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+            </svg>
+          </button>
+          <button
+            @click.stop="$emit('delete-session', session.id)"
+            class="delete-button"
+            title="Delete chat"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       <div v-if="!sessions || sessions.length === 0" class="empty-sessions">
@@ -78,7 +91,7 @@ const props = withDefaults(defineProps<{
   currentSessionId: null
 })
 
-defineEmits(['new-chat', 'select-session', 'delete-session'])
+const emit = defineEmits(['new-chat', 'select-session', 'delete-session', 'rename-session'])
 
 const router = useRouter()
 const { signOut } = useAuth()
@@ -263,7 +276,13 @@ const handleLogout = async () => {
   font-size: 1.25rem;
 }
 
-.delete-button {
+.session-actions {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.delete-button,
+.rename-button {
   background: transparent;
   border: none;
   color: #6b7280;
@@ -276,16 +295,22 @@ const handleLogout = async () => {
   flex-shrink: 0;
 }
 
-.sidebar.collapsed .delete-button {
+.sidebar.collapsed .delete-button,
+.sidebar.collapsed .rename-button {
   display: none;
 }
 
-.session-item:hover .delete-button {
+.session-item:hover .delete-button,
+.session-item:hover .rename-button {
   opacity: 1;
 }
 
 .delete-button:hover {
   color: #ef4444;
+}
+
+.rename-button:hover {
+  color: #fbbf24;
 }
 
 .empty-sessions {
@@ -307,10 +332,10 @@ const handleLogout = async () => {
 .logout-button {
   width: 100%;
   padding: 0.75rem 1rem;
-  background: transparent;
-  color: white;
   border: 1px solid #2d2d2d;
   border-radius: 0.5rem;
+  background: transparent;
+  color: white;
   font-weight: 600;
   display: flex;
   align-items: center;

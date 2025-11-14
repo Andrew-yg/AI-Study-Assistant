@@ -3,14 +3,37 @@
     <div class="page-header">
       <div class="header-content">
         <h1>Learning Materials</h1>
-        <p>Manage your uploaded study materials</p>
+        <p>Manage uploads per conversation for more accurate study sessions</p>
       </div>
-      <button @click="goToChat" class="back-button">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M19 12H5M12 19l-7-7 7-7" />
-        </svg>
-        Back to Chat
-      </button>
+      <div class="header-actions">
+        <div class="filter-group">
+          <label for="conversation-filter">Conversation</label>
+          <select
+            id="conversation-filter"
+            v-model="selectedConversationFilter"
+            class="filter-select"
+          >
+            <option value="all">All conversations</option>
+            <option value="unassigned">No conversation</option>
+            <option
+              v-for="conversation in conversations"
+              :key="conversation.id"
+              :value="conversation.id"
+            >
+              {{ conversation.title || 'Untitled conversation' }}
+            </option>
+          </select>
+        </div>
+        <button @click="showUploadModal = true" class="primary-button">
+          Upload Material
+        </button>
+        <button @click="goToChat" class="back-button">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M19 12H5M12 19l-7-7 7-7" />
+          </svg>
+          Back to Chat
+        </button>
+      </div>
     </div>
 
     <div v-if="loading" class="loading-state">
@@ -20,8 +43,8 @@
 
     <div v-else-if="materials.length === 0" class="empty-state">
       <div class="empty-icon">📚</div>
-      <h2>No materials yet</h2>
-      <p>Upload your first learning material to get started</p>
+      <h2>No materials for {{ currentFilterLabel }}</h2>
+      <p>Select another conversation or upload a PDF to start building context</p>
       <button @click="showUploadModal = true" class="empty-upload-button">
         Upload Material
       </button>
@@ -35,20 +58,24 @@
       >
         <div class="card-header">
           <div class="file-icon">📄</div>
-          <div class="material-type-badge" :class="material.material_type">
-            {{ formatMaterialType(material.material_type) }}
+          <div class="material-type-badge" :class="material.materialType">
+            {{ formatMaterialType(material.materialType) }}
           </div>
         </div>
 
+        <div class="conversation-chip">
+          {{ getConversationLabel(material.conversationId) }}
+        </div>
+
         <div class="card-body">
-          <h3 class="material-title">{{ material.original_filename }}</h3>
-          <p class="course-name">{{ material.course_name }}</p>
+          <h3 class="material-title">{{ material.originalFilename }}</h3>
+          <p class="course-name">{{ material.courseName }}</p>
           <p v-if="material.description" class="description">
             {{ material.description }}
           </p>
           <div class="meta-info">
-            <span class="file-size">{{ formatFileSize(material.file_size) }}</span>
-            <span class="upload-date">{{ formatDate(material.created_at) }}</span>
+            <span class="file-size">{{ formatFileSize(material.fileSize) }}</span>
+            <span class="upload-date">{{ formatDate(material.createdAt) }}</span>
           </div>
         </div>
 
@@ -92,31 +119,68 @@ definePageMeta({
 
 interface LearningMaterial {
   id: string
-  user_id: string
-  course_name: string
-  material_type: string
+  userId: string
+  conversationId: string | null
+  courseName: string
+  materialType: string
   description: string
-  file_path: string
-  file_size: number
-  original_filename: string
-  created_at: string
-  updated_at: string
+  filePath: string
+  fileSize: number
+  originalFilename: string
+  createdAt: string
+  updatedAt: string
+}
+
+interface ConversationSummary {
+  id: string
+  title: string
 }
 
 const { user, token } = useAuth()
+const conversationsAPI = useConversations()
 const materials = ref<LearningMaterial[]>([])
+const conversations = ref<ConversationSummary[]>([])
 const loading = ref(true)
 const showUploadModal = ref(false)
 const editingMaterial = ref<LearningMaterial | null>(null)
 const router = useRouter()
+const selectedConversationFilter = ref<'all' | 'unassigned' | string>('all')
+
+const conversationLookup = computed<Record<string, string>>(() => {
+  const lookup: Record<string, string> = {}
+  for (const convo of conversations.value) {
+    lookup[convo.id] = convo.title || 'Untitled conversation'
+  }
+  return lookup
+})
+
+const currentFilterLabel = computed(() => {
+  if (selectedConversationFilter.value === 'all') return 'all conversations'
+  if (selectedConversationFilter.value === 'unassigned') return 'no conversation'
+  return conversationLookup.value[selectedConversationFilter.value] || 'selected conversation'
+})
 
 const goToChat = () => {
   router.push('/chat')
 }
 
 onMounted(async () => {
+  await loadConversations()
   await fetchMaterials()
 })
+
+watch(selectedConversationFilter, async () => {
+  await fetchMaterials()
+})
+
+const loadConversations = async () => {
+  if (!token.value) return
+  try {
+    conversations.value = await conversationsAPI.fetchConversations()
+  } catch (error) {
+    console.error('[Materials] Failed to load conversations:', error)
+  }
+}
 
 const fetchMaterials = async () => {
   if (!user.value || !token.value) return
@@ -125,24 +189,33 @@ const fetchMaterials = async () => {
     loading.value = true
     console.log('[Materials] Fetching materials...')
 
+    const query: Record<string, string> = {}
+    if (selectedConversationFilter.value !== 'all') {
+      query.conversationId = selectedConversationFilter.value === 'unassigned'
+        ? 'null'
+        : selectedConversationFilter.value
+    }
+
     const response = await $fetch('/api/materials', {
       headers: {
         Authorization: `Bearer ${token.value}`
-      }
+      },
+      query
     })
     
     // Transform API response to match UI expectations
     materials.value = (response.data || []).map((item: any) => ({
       id: item.id,
-      user_id: item.userId,
-      course_name: item.courseName,
-      material_type: item.materialType,
+      userId: item.userId,
+      conversationId: item.conversationId || null,
+      courseName: item.courseName,
+      materialType: item.materialType,
       description: item.description,
-      file_path: item.filePath,
-      file_size: item.fileSize,
-      original_filename: item.originalFilename,
-      created_at: item.createdAt,
-      updated_at: item.updatedAt
+      filePath: item.filePath,
+      fileSize: item.fileSize,
+      originalFilename: item.originalFilename,
+      createdAt: item.createdAt,
+      updatedAt: item.updatedAt
     }))
     console.log('[Materials] Loaded', materials.value.length, 'materials')
   } catch (error) {
@@ -167,6 +240,12 @@ const handleUpload = async (uploadData: any) => {
     formData.append('courseName', uploadData.courseName)
     formData.append('materialType', uploadData.materialType)
     formData.append('description', uploadData.description)
+    if (selectedConversationFilter.value !== 'all') {
+      const convoId = selectedConversationFilter.value === 'unassigned'
+        ? ''
+        : selectedConversationFilter.value
+      formData.append('conversationId', convoId)
+    }
 
     console.log('[Materials] Uploading file:', uploadData.file.name)
     await $fetch('/api/upload', {
@@ -255,6 +334,11 @@ const formatMaterialType = (type: string) => {
   return types[type] || type
 }
 
+const getConversationLabel = (conversationId: string | null) => {
+  if (!conversationId) return 'No conversation'
+  return conversationLookup.value[conversationId] || 'Conversation'
+}
+
 const formatFileSize = (bytes: number) => {
   if (bytes < 1024) return bytes + ' B'
   if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
@@ -286,6 +370,47 @@ const formatDate = (dateString: string) => {
   align-items: center;
   flex-wrap: wrap;
   gap: 1rem;
+}
+
+.header-actions {
+  display: flex;
+  align-items: flex-end;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 220px;
+}
+
+.filter-group label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #4b5563;
+}
+
+.filter-select {
+  padding: 0.6rem 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid #d1d5db;
+  min-width: 220px;
+}
+
+.primary-button {
+  padding: 0.75rem 1.5rem;
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 0.75rem;
+  font-weight: 600;
+  transition: background 0.2s;
+}
+
+.primary-button:hover {
+  background: #1e40af;
 }
 
 .header-content h1 {
@@ -400,6 +525,17 @@ const formatDate = (dateString: string) => {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 1rem;
+}
+
+.conversation-chip {
+  align-self: flex-start;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #4338ca;
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
 }
 
 .file-icon {
@@ -520,6 +656,11 @@ const formatDate = (dateString: string) => {
 
   .page-header {
     flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .header-actions {
+    width: 100%;
     align-items: flex-start;
   }
 

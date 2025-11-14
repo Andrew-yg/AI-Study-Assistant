@@ -6,6 +6,7 @@
       @new-chat="createNewChat"
       @select-session="selectSession"
       @delete-session="deleteSession"
+      @rename-session="renameSession"
     />
 
     <div class="main-content">
@@ -41,6 +42,37 @@
           >
             <div class="message-content">{{ message.content }}</div>
           </div>
+        </div>
+
+        <div class="conversation-materials">
+          <div class="materials-header">
+            <h3>Conversation Materials</h3>
+            <span v-if="currentSessionId">
+              Linked to this chat
+            </span>
+          </div>
+          <div v-if="!currentSessionId" class="materials-empty">
+            Select a chat to see its learning materials.
+          </div>
+          <div v-else-if="materialsLoading" class="materials-loading">
+            Loading linked PDFs...
+          </div>
+          <div v-else-if="conversationMaterials.length === 0" class="materials-empty">
+            No materials yet for this conversation.
+          </div>
+          <ul v-else class="materials-list">
+            <li v-for="material in conversationMaterials" :key="material.id" class="materials-list-item">
+              <div class="material-meta-info">
+                <p class="material-name">{{ material.originalFilename }}</p>
+                <p class="material-meta-text">
+                  {{ material.courseName }} · {{ formatFileSize(material.fileSize) }}
+                </p>
+              </div>
+              <button class="materials-open" @click="openMaterial(material.id)">
+                View
+              </button>
+            </li>
+          </ul>
         </div>
 
         <div class="input-area">
@@ -88,6 +120,17 @@ definePageMeta({
   middleware: 'auth'
 })
 
+interface ConversationMaterial {
+  id: string
+  conversationId: string | null
+  courseName: string
+  materialType: string
+  description: string
+  fileSize: number
+  originalFilename: string
+  createdAt: string
+}
+
 const { user, token, signOut } = useAuth()
 const router = useRouter()
 const conversationsAPI = useConversations()
@@ -99,6 +142,8 @@ const inputMessage = ref('')
 const showFileUpload = ref(false)
 const showUserMenu = ref(false)
 const loading = ref(false)
+const conversationMaterials = ref<ConversationMaterial[]>([])
+const materialsLoading = ref(false)
 
 const userName = computed(() => {
   return user.value?.name || user.value?.email?.split('@')[0] || 'User'
@@ -153,7 +198,11 @@ const selectSession = async (sessionId: string) => {
   try {
     loading.value = true
     currentSessionId.value = sessionId
-    messages.value = await conversationsAPI.fetchMessages(sessionId)
+    const [fetchedMessages] = await Promise.all([
+      conversationsAPI.fetchMessages(sessionId),
+      fetchConversationMaterials(sessionId)
+    ])
+    messages.value = fetchedMessages
   } catch (error) {
     console.error('Failed to load messages:', error)
     messages.value = []
@@ -173,11 +222,45 @@ const deleteSession = async (sessionId: string) => {
       } else {
         currentSessionId.value = null
         messages.value = []
+        conversationMaterials.value = []
       }
     }
   } catch (error) {
     console.error('Failed to delete conversation:', error)
     alert('Failed to delete chat')
+  }
+}
+
+const renameSession = async (sessionId: string) => {
+  const session = chatSessions.value.find(s => s.id === sessionId)
+  if (!session) return
+
+  const currentTitle = session.title || 'New Chat'
+  const promptTitle = typeof window !== 'undefined'
+    ? window.prompt('Rename conversation', currentTitle)
+    : null
+
+  if (promptTitle === null) {
+    return
+  }
+
+  const trimmedTitle = promptTitle.trim()
+
+  if (!trimmedTitle) {
+    alert('Conversation name cannot be empty')
+    return
+  }
+
+  if (trimmedTitle === session.title) {
+    return
+  }
+
+  try {
+    await conversationsAPI.updateConversation(sessionId, trimmedTitle)
+    session.title = trimmedTitle
+  } catch (error: any) {
+    console.error('[Chat] Failed to rename conversation:', error)
+    alert('Failed to rename chat: ' + (error.data?.message || error.message || 'Unknown error'))
   }
 }
 
@@ -270,12 +353,75 @@ const handleFileUpload = async (uploadData: any) => {
       `Successfully uploaded ${uploadData.file.name}! You can now ask questions about this material.`
     )
     messages.value.push(aiMessage)
+
+    await fetchConversationMaterials(currentSessionId.value)
   } catch (error: any) {
     console.error('[Chat] Upload failed:', error)
     alert('Failed to upload file: ' + (error.data?.message || error.message || 'Unknown error'))
   } finally {
     loading.value = false
   }
+}
+
+const fetchConversationMaterials = async (conversationId?: string | null) => {
+  if (!token.value || !conversationId) {
+    conversationMaterials.value = []
+    return
+  }
+
+  try {
+    materialsLoading.value = true
+    const response = await $fetch('/api/materials', {
+      headers: {
+        Authorization: `Bearer ${token.value}`
+      },
+      query: {
+        conversationId
+      }
+    })
+
+    conversationMaterials.value = (response.data || []).map((item: any) => ({
+      id: item.id,
+      conversationId: item.conversationId || null,
+      courseName: item.courseName,
+      materialType: item.materialType,
+      description: item.description,
+      fileSize: item.fileSize,
+      originalFilename: item.originalFilename,
+      createdAt: item.createdAt
+    }))
+  } catch (error) {
+    console.error('[Chat] Failed to fetch materials for conversation:', error)
+    conversationMaterials.value = []
+  } finally {
+    materialsLoading.value = false
+  }
+}
+
+const openMaterial = async (materialId: string) => {
+  if (!token.value) return
+
+  try {
+    const response = await $fetch(`/api/materials/${materialId}`, {
+      headers: {
+        Authorization: `Bearer ${token.value}`
+      }
+    })
+
+    const url = response.data?.publicUrl
+    if (url && process.client) {
+      window.open(url, '_blank', 'noopener')
+    }
+  } catch (error) {
+    console.error('[Chat] Failed to open material:', error)
+    alert('Failed to open material')
+  }
+}
+
+const formatFileSize = (bytes: number) => {
+  if (bytes < 1024) return bytes + ' B'
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
 }
 
 const handleLogout = async () => {
@@ -441,6 +587,97 @@ const handleLogout = async () => {
   gap: 1rem;
 }
 
+.conversation-materials {
+  margin-top: 1rem;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 1rem;
+  padding: 1rem 1.25rem;
+}
+
+.materials-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.materials-header h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.materials-header span {
+  font-size: 0.85rem;
+  color: #6b7280;
+}
+
+.materials-empty,
+.materials-loading {
+  padding: 0.75rem 0;
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+
+.materials-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.materials-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 0;
+  border-top: 1px solid #f3f4f6;
+}
+
+.materials-list-item:first-child {
+  border-top: none;
+}
+
+.material-meta-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.material-name {
+  font-weight: 600;
+  color: #1a1a1a;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.material-meta-text {
+  margin: 0.25rem 0 0;
+  color: #6b7280;
+  font-size: 0.85rem;
+}
+
+.materials-open {
+  padding: 0.4rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid #d1d5db;
+  background: #f9fafb;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #1f2937;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.materials-open:hover {
+  background: #fff;
+  border-color: #9ca3af;
+}
+
 .message {
   display: flex;
   animation: slideIn 0.3s ease;
@@ -577,6 +814,11 @@ const handleLogout = async () => {
 
   .chat-container {
     padding: 1rem;
+  }
+
+  .materials-list-item {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }
 

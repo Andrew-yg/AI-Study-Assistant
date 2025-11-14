@@ -64,15 +64,16 @@
 <script setup lang="ts">
 interface LearningMaterial {
   id: string
-  user_id: string
-  course_name: string
-  material_type: string
+  userId: string
+  conversationId: string | null
+  courseName: string
+  materialType: string
   description: string
-  file_path: string
-  file_size: number
-  original_filename: string
-  created_at: string
-  updated_at: string
+  filePath: string
+  fileSize: number
+  originalFilename: string
+  createdAt: string
+  updatedAt: string
 }
 
 const props = defineProps<{
@@ -84,8 +85,8 @@ const emit = defineEmits(['close', 'save'])
 const saving = ref(false)
 
 const formData = ref({
-  courseName: props.material.course_name,
-  materialType: props.material.material_type,
+  courseName: props.material.courseName,
+  materialType: props.material.materialType,
   description: props.material.description
 })
 
