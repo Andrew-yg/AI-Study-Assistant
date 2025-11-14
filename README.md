@@ -61,6 +61,7 @@ The backend now checks downstream health before making requests. If a service is
 | `npm run dev` | Launch Nuxt + rag + agent + quiz services |
 | `npm run dev:web` | Only run the Nuxt dev server |
 | `npm run dev:rag` / `dev:agent` / `dev:quiz` | Start services individually |
+| `npm run test:e2e` | Run the Playwright end-to-end suite (auto-starts Nuxt) |
 | `npm run build` | Production build |
 | `npm run preview` | Preview production output |
 
@@ -72,6 +73,21 @@ npm run preview
 ```
 
 Deploy the Nuxt build together with the Python services (for example via separate processes or containers). Ensure the environment variables for `RAG_SERVICE_URL`, `AGENT_SERVICE_URL`, and `QUIZ_SERVICE_URL` point to the deployed services.
+
+## 🧪 End-to-end tests
+
+The basic regression flow (chat + telemetry + quiz modules) is covered by Playwright. The suite spins up the Nuxt dev server on port `3100`, mocks backend APIs, and verifies the UI renders an assistant response with telemetry and saved quizzes.
+
+```bash
+# first time only
+npx playwright install
+
+# run the suite
+npm run test:e2e
+
+# view the latest HTML report (optional)
+npx playwright show-report
+```
 
 ---
 

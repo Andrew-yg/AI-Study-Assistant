@@ -10,6 +10,7 @@
     "dev:agent": "cd server/python-services/agent-service && python main.py",
     "dev:quiz": "cd server/python-services/quiz-service && python main.py",
     "dev:all": "npm run dev",
+    "test:e2e": "playwright test",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare"
@@ -28,6 +29,7 @@
     "zod": "^3.22.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.48.2",
     "@types/bcryptjs": "^2.4.6",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/multer": "^2.0.0",

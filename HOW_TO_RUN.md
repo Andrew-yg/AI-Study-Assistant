@@ -116,6 +116,23 @@ npm run dev:quiz   # 端口 http://localhost:8003
 ```
 所有服务依赖 `.env` 中的 `OPENAI_API_KEY`，Agent 另外使用 `BRAVE_SEARCH_API_KEY`。
 
+### 运行端到端测试
+
+完整 UI 流程（聊天 + Telemetry + Quiz 面板）现在由 Playwright 覆盖。无需启动 Python 微服务——测试会在本地起 Nuxt Dev Server，并拦截 API 请求生成假数据。
+
+```bash
+# 第一次在本机运行需安装浏览器
+npx playwright install
+
+# 执行测试
+npm run test:e2e
+
+# 查看最近一次报告（可选）
+npx playwright show-report
+```
+
+> Playwright 会自动在端口 `3100` 启动 Nuxt。如果已手动运行 `npm run dev:web`，可复用现有实例。
+
 ### 安装依赖（如果需要）
 ```bash
 npm install
