@@ -145,24 +145,7 @@
                           </ul>
                         </div>
 
-                        <div
-                          v-if="getToolCalls(getTelemetry(message.id)).length"
-                          class="telemetry-section"
-                        >
-                          <p class="section-label">Tool calls</p>
-                          <ul class="tool-call-list">
-                            <li
-                              v-for="(call, idx) in getToolCalls(getTelemetry(message.id))"
-                              :key="call.name + idx"
-                            >
-                              <div class="tool-call-row">
-                                <span class="tool-name">{{ call.name }}</span>
-                                <span :class="['tool-status', call.status]">{{ call.status }}</span>
-                              </div>
-                              <pre v-if="call.detail" class="tool-detail">{{ formatToolDetail(call.detail) }}</pre>
-                            </li>
-                          </ul>
-                        </div>
+                        <!-- Tool call telemetry intentionally hidden per UX request -->
                       </div>
 
                       <div
