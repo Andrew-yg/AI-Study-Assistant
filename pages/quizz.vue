@@ -3,7 +3,8 @@
     <header class="practice-header">
       <div>
         <p class="eyebrow">Practice drills</p>
-        <h1>{{ conversationTitle || 'Practice quizzes' }}</h1>
+        <h1>{{ activeQuizTitle }}</h1>
+        <p v-if="conversationTitle" class="header-context">{{ conversationTitle }}</p>
         <p class="header-subtitle">
           Review the quizzes linked to your chats, answer questions, and let the agent grade your work.
         </p>
@@ -97,6 +98,7 @@
                 <span class="question-type-pill">{{ formatQuestionType(question.questionType) }}</span>
               </div>
               <p class="question-text">{{ question.question }}</p>
+              <p v-if="question.sourceSummary" class="question-source">{{ question.sourceSummary }}</p>
 
               <div v-if="question.questionType === 'multiple_choice'" class="multiple-choice-grid">
                 <label
@@ -205,6 +207,30 @@ const submissionResult = ref<{ summary: PracticeQuiz['submissions'][number]['sum
 const answers = reactive<Record<string, string>>({})
 const conversationTitle = ref('')
 
+const getQuizTimeValue = (entry: PracticeQuiz) => {
+  const dateValue = entry.createdAt || entry.updatedAt
+  if (!dateValue) return 0
+  const timestamp = new Date(dateValue).getTime()
+  return Number.isNaN(timestamp) ? 0 : timestamp
+}
+
+const quizOrdinalMap = computed(() => {
+  const sorted = [...availableQuizzes.value].sort((a, b) => getQuizTimeValue(a) - getQuizTimeValue(b))
+  const map = new Map<string, number>()
+  sorted.forEach((entry, index) => {
+    map.set(entry.id, index + 1)
+  })
+  return map
+})
+
+const activeQuizTitle = computed(() => {
+  if (!quiz.value) {
+    return conversationTitle.value || 'Practice quizzes'
+  }
+  const ordinal = quizOrdinalMap.value.get(quiz.value.id)
+  return ordinal ? `Quiz ${ordinal}` : 'Quiz'
+})
+
 const currentConversationId = computed(() => typeof route.query.conversationId === 'string' ? route.query.conversationId : null)
 const currentQuizId = computed(() => typeof route.query.quizId === 'string' ? route.query.quizId : null)
 
@@ -277,12 +303,33 @@ const getChoiceState = (questionId: string, option: string) => {
   return answers[questionId] === option ? 'selected' : ''
 }
 
-const resetAnswers = (targetQuiz: PracticeQuiz) => {
+const applySubmissionState = (targetQuiz: PracticeQuiz, submission?: PracticeQuiz['submissions'][number] | { summary: PracticeQuiz['submissions'][number]['summary']; answers: PracticeQuiz['submissions'][number]['answers'] } | null) => {
   Object.keys(answers).forEach((key) => delete answers[key])
+  const answerLookup = submission
+    ? submission.answers.reduce((acc, entry) => {
+      acc.set(entry.questionId.toString(), entry)
+      return acc
+    }, new Map<string, PracticeQuiz['submissions'][number]['answers'][number]>())
+    : new Map<string, PracticeQuiz['submissions'][number]['answers'][number]>()
+
   targetQuiz.questions.forEach((question) => {
-    answers[question.id] = ''
+    const matched = answerLookup.get(question.id)
+    answers[question.id] = matched?.userAnswer || ''
   })
-  submissionResult.value = null
+
+  submissionResult.value = submission
+    ? {
+        summary: submission.summary,
+        answers: submission.answers,
+      }
+    : null
+}
+
+const getLatestSubmission = (targetQuiz: PracticeQuiz | null) => {
+  if (!targetQuiz || !targetQuiz.submissions?.length) {
+    return null
+  }
+  return targetQuiz.submissions[targetQuiz.submissions.length - 1]
 }
 
 const loadConversationTitle = async () => {
@@ -347,9 +394,9 @@ const loadQuiz = async () => {
       return
     }
 
-    const data = await practiceQuizAPI.fetchQuiz(quizId)
-    quiz.value = data
-    resetAnswers(data)
+  const data = await practiceQuizAPI.fetchQuiz(quizId)
+  quiz.value = data
+  applySubmissionState(data, getLatestSubmission(data))
   } catch (error: any) {
     console.error('[PracticeQuiz] Failed to load quiz:', error)
     quiz.value = null
@@ -385,9 +432,9 @@ const submitQuiz = async () => {
       questionId: question.id,
       answer: answers[question.id] || '',
     }))
-    const response = await practiceQuizAPI.submitQuiz(quiz.value.id, { answers: payload })
-    quiz.value = response.quiz
-    submissionResult.value = response.submission
+  const response = await practiceQuizAPI.submitQuiz(quiz.value.id, { answers: payload })
+  quiz.value = response.quiz
+  applySubmissionState(response.quiz, response.submission)
   } catch (error: any) {
     console.error('[PracticeQuiz] Submission failed:', error)
     alert(error?.data?.message || error?.message || 'Failed to evaluate quiz')
@@ -442,6 +489,12 @@ onMounted(async () => {
   margin: 0;
   font-size: 2rem;
   color: #0f172a;
+}
+
+.header-context {
+  margin: 0.2rem 0 0;
+  color: #64748b;
+  font-size: 0.95rem;
 }
 
 .header-subtitle {
@@ -681,6 +734,13 @@ onMounted(async () => {
   margin: 0;
   font-size: 1.05rem;
   color: #0f172a;
+}
+
+.question-source {
+  margin: 0.35rem 0 0;
+  color: #475569;
+  font-size: 0.9rem;
+  font-style: italic;
 }
 
 .multiple-choice-grid {

@@ -5,7 +5,7 @@ import asyncio
 import os
 import tempfile
 from dataclasses import dataclass
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from llama_index.core import Settings, StorageContext, VectorStoreIndex
 from llama_index.core.node_parser import SentenceSplitter
@@ -31,6 +31,8 @@ class RAGPipeline:
 
     def __init__(self) -> None:
         self._init_models()
+        self._mongo_client = MongoClient(settings.MONGODB_URI)
+        self._collection = self._mongo_client[settings.MONGODB_VECTOR_DB][settings.MONGODB_VECTOR_COLLECTION]
         self._init_vector_store()
 
     def _init_models(self) -> None:
@@ -40,9 +42,8 @@ class RAGPipeline:
         Settings.node_parser = SentenceSplitter(chunk_size=1024, chunk_overlap=200)
 
     def _init_vector_store(self) -> None:
-        client = MongoClient(settings.MONGODB_URI)
         self._vector_store = MongoDBAtlasVectorSearch(
-            mongo_client=client,
+            mongo_client=self._mongo_client,
             db_name=settings.MONGODB_VECTOR_DB,
             collection_name=settings.MONGODB_VECTOR_COLLECTION,
             index_name=settings.MONGODB_VECTOR_INDEX,
@@ -113,16 +114,92 @@ class RAGPipeline:
         for node in response.source_nodes:
             node_score = getattr(node, "score", None)
             sources.append({
-                "snippet": node.get_content(strip_newlines=False),
+                "snippet": node.get_content(),
                 "score": node_score,
                 "metadata": node.metadata,
             })
 
+        answer_text = str(response)
+        confidence = float(getattr(response, "score", 0.0) or 0.0)
+        print(f"[RAG Query Debug] question={question[:100]}, user_id={user_id}, material_ids={material_ids}")
+        print(f"[RAG Query Debug] Found {len(sources)} sources")
+        if sources:
+            print(f"[RAG Query Debug] First source metadata: {sources[0].get('metadata', {})}")
+        else:
+            print(f"[RAG Query Debug] ⚠️  NO SOURCES RETURNED!")
+            print(f"[RAG Query Debug] This usually means:")
+            print(f"[RAG Query Debug]   1. MongoDB Atlas Vector Search Index is missing")
+            print(f"[RAG Query Debug]   2. Index name doesn't match: {settings.MONGODB_VECTOR_INDEX}")
+            print(f"[RAG Query Debug]   3. Index is still building (not Active)")
+            print(f"[RAG Query Debug] See ATLAS_VECTOR_SEARCH_SETUP.md for instructions")
+            fallback_sources, fallback_summary = await asyncio.to_thread(
+                self._fallback_documents,
+                user_id,
+                material_ids,
+                top_k,
+            )
+            if fallback_sources:
+                print(f"[RAG Query Debug] ✅ Using MongoDB fallback (no vector index)")
+                sources = fallback_sources
+                if fallback_summary:
+                    answer_text = fallback_summary
+                confidence = 0.0
+            else:
+                print(f"[RAG Query Debug] ❌ MongoDB fallback also returned 0 documents")
+        
         return {
-            "answer": str(response),
+            "answer": answer_text,
             "sources": sources,
-            "confidence": float(getattr(response, "score", 0.0) or 0.0),
+            "confidence": confidence,
         }
+
+    def _fallback_documents(
+        self,
+        user_id: str,
+        material_ids: Optional[List[str]],
+        top_k: int,
+    ) -> Tuple[List[Dict[str, Any]], Optional[str]]:
+        """Return raw MongoDB chunks when Atlas Vector Search index is unavailable."""
+        query: Dict[str, Any] = {"metadata.user_id": user_id}
+        if material_ids:
+            query["metadata.material_id"] = {"$in": material_ids}
+
+        cursor = (
+            self._collection
+            .find(query)
+            .sort("metadata.material_id", 1)
+            .limit(max(top_k * 3, top_k))
+        )
+
+        sources: List[Dict[str, Any]] = []
+        snippets: List[str] = []
+
+        for doc in cursor:
+            metadata = doc.get("metadata", {}) or {}
+            raw_snippet = metadata.get("_node_content") or doc.get("text") or ""
+            snippet = str(raw_snippet).strip()
+            if not snippet:
+                continue
+
+            sources.append({
+                "snippet": snippet,
+                "score": None,
+                "metadata": metadata,
+            })
+            snippets.append(snippet)
+
+            if len(sources) >= top_k:
+                break
+
+        fallback_summary = None
+        if snippets:
+            trimmed = "\n\n".join(snippets[:3])
+            fallback_summary = (
+                "(Fallback summary generated from stored chunks because Atlas Vector Search index is missing.)\n"
+                f"{trimmed[:1500]}"
+            )
+
+        return sources, fallback_summary
 
 
 rag_pipeline = RAGPipeline()

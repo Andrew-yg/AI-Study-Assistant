@@ -42,12 +42,16 @@ class QuizGenerator:
             raise ValueError("material_ids is required for quiz generation")
 
         context = await self._fetch_material_context(material_ids=material_ids, user_id=user_id)
+        sources = context.get("sources", [])
+        if not sources:
+            raise ValueError("无法从学习资料中检索到内容，请先上传并处理 PDF 文件。")
+
         summary_text = context.get("answer") or context.get("summary") or ""
-        sources_excerpt = self._format_sources(context.get("sources", []))
+        context_block = self._format_sources(sources)
 
         prompt = self._build_generation_prompt(
             context_summary=summary_text,
-            sources_excerpt=sources_excerpt,
+            context_block=context_block,
             question_type=question_type,
             difficulty=difficulty,
             count=count,
@@ -102,6 +106,14 @@ class QuizGenerator:
             is_correct = normalized_user == normalized_correct
             score = 1.0 if is_correct else 0.0
             feedback = "Nice work!" if is_correct else f"Not quite. Correct answer: {correct_answer}."
+            if not is_correct:
+                feedback = await self._ensure_feedback(
+                    base_feedback=feedback,
+                    question=question,
+                    correct_answer=correct_answer,
+                    existing_explanation=explanation,
+                    context_summary=context_summary,
+                )
             return {
                 "is_correct": is_correct,
                 "score": score,
@@ -141,6 +153,13 @@ class QuizGenerator:
         is_correct = bool(parsed.get("is_correct"))
         score = float(parsed.get("score", 0))
         feedback = str(parsed.get("feedback") or "")
+        feedback = await self._ensure_feedback(
+            base_feedback=feedback,
+            question=question,
+            correct_answer=correct_answer,
+            existing_explanation=explanation,
+            context_summary=context_summary,
+        )
 
         return {
             "is_correct": is_correct,
@@ -148,30 +167,135 @@ class QuizGenerator:
             "feedback": feedback or ("Great job!" if is_correct else "Review the reference material."),
         }
 
+    async def _ensure_feedback(
+        self,
+        *,
+        base_feedback: str,
+        question: str,
+        correct_answer: str,
+        existing_explanation: Optional[str],
+        context_summary: Optional[str],
+    ) -> str:
+        feedback = (base_feedback or "").strip()
+        detail = (existing_explanation or "").strip()
+
+        if detail and detail.lower() != correct_answer.strip().lower():
+            enriched = f"Explanation: {detail}"
+            return f"{feedback}\n{enriched}" if feedback else enriched
+
+        generated = await self._generate_explanation(
+            question=question,
+            correct_answer=correct_answer,
+            context_summary=context_summary,
+        )
+
+        if not feedback:
+            return generated
+        return f"{feedback}\n{generated}"
+
+    async def _generate_explanation(
+        self,
+        *,
+        question: str,
+        correct_answer: str,
+        context_summary: Optional[str],
+    ) -> str:
+        prompt = (
+            "你是一名数据库和计算机系统教学助教，需要用 2-3 句话解释为什么正确答案成立。"
+            "保持语气友好，并引用上下文中的关键词。\n\n"
+            f"题目：{question}\n"
+            f"正确答案：{correct_answer}\n"
+            f"补充上下文：{context_summary or '（未提供）'}\n"
+            "请直接输出解释文本，不要重复题目。"
+        )
+
+        completion = await self._client.chat.completions.create(
+            model=settings.OPENAI_COMPLETION_MODEL,
+            temperature=0.2,
+            messages=[
+                {"role": "system", "content": "You write concise teaching explanations in Chinese."},
+                {"role": "user", "content": prompt},
+            ],
+        )
+
+        explanation_text = completion.choices[0].message.content or ""
+        explanation_text = explanation_text.strip()
+        if not explanation_text:
+            return "Explanation unavailable. Review the study notes."
+        return explanation_text
+
     async def _fetch_material_context(self, *, material_ids: List[str], user_id: str) -> Dict[str, Any]:
         if not settings.RAG_SERVICE_URL:
             return {}
 
+        timeout = aiohttp.ClientTimeout(total=30)
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            context = await self._rag_query(session, material_ids=material_ids, user_id=user_id, top_k=8)
+            sources = context.get("sources") or []
+            summary_text = context.get("answer") or ""
+
+            print(f"[Quiz Generator Debug] Initial RAG query for materials={material_ids}, user={user_id}")
+            print(f"[Quiz Generator Debug] Initial sources count: {len(sources)}")
+            print(f"[Quiz Generator Debug] Summary length: {len(summary_text)}")
+
+            if not sources:
+                fallback_sources: List[Dict[str, Any]] = []
+                summary_parts: List[str] = [summary_text] if summary_text else []
+
+                for material_id in material_ids:
+                    extra = await self._rag_query(session, material_ids=[material_id], user_id=user_id, top_k=6)
+                    print(f"[Quiz Generator Debug] Fallback query for material={material_id}: {len(extra.get('sources', []))} sources")
+                    if extra.get("sources"):
+                        fallback_sources.extend(extra["sources"])
+                    if extra.get("answer"):
+                        summary_parts.append(extra["answer"])
+                    if len(fallback_sources) >= 8:
+                        break
+
+                if fallback_sources:
+                    context["sources"] = fallback_sources[:8]
+                if not summary_text and summary_parts:
+                    context["answer"] = " \n".join(part.strip() for part in summary_parts if part.strip())
+
+            if not context.get("sources"):
+                print(f"[Quiz Generator Debug] FATAL: No sources found after fallback!")
+                print(f"[Quiz Generator Debug] This means MongoDB Atlas Vector Search Index is missing.")
+                print(f"[Quiz Generator Debug] Run: python3 diagnose_rag_pipeline.py")
+                print(f"[Quiz Generator Debug] See: ATLAS_VECTOR_SEARCH_SETUP.md")
+                raise ValueError(
+                    "无法从学习资料中检索到内容。"
+                    "可能原因：MongoDB Atlas Vector Search Index 未创建或未激活。"
+                    "请查看 ATLAS_VECTOR_SEARCH_SETUP.md 文件了解如何创建索引。"
+                )
+
+            return context
+
+    async def _rag_query(
+        self,
+        session: aiohttp.ClientSession,
+        *,
+        material_ids: List[str],
+        user_id: str,
+        top_k: int,
+    ) -> Dict[str, Any]:
         payload = {
             "question": "Summarize the most important concepts for quiz generation.",
             "material_ids": material_ids,
             "user_id": user_id,
-            "top_k": 8,
+            "top_k": top_k,
         }
 
-        timeout = aiohttp.ClientTimeout(total=30)
-        async with aiohttp.ClientSession(timeout=timeout) as session:
-            async with session.post(f"{settings.RAG_SERVICE_URL}/query", json=payload) as resp:
-                if resp.status >= 400:
-                    text = await resp.text()
-                    raise RuntimeError(f"Failed to fetch material context ({resp.status}): {text}")
-                return await resp.json()
+        async with session.post(f"{settings.RAG_SERVICE_URL}/query", json=payload) as resp:
+            if resp.status >= 400:
+                text = await resp.text()
+                raise RuntimeError(f"Failed to fetch material context ({resp.status}): {text}")
+            return await resp.json()
 
     def _build_generation_prompt(
         self,
         *,
         context_summary: str,
-        sources_excerpt: str,
+        context_block: str,
         question_type: str,
         difficulty: str,
         count: int,
@@ -179,18 +303,20 @@ class QuizGenerator:
         tone = DIFFICULTY_TONES.get(difficulty, "balanced")
         label = QUESTION_TYPE_LABELS.get(question_type, question_type)
         return (
-            f"Context summary:\n{context_summary}\n\n"
-            f"Sources:\n{sources_excerpt}\n\n"
-            f"Create {count} {label} questions at a {difficulty} difficulty."\
-            f"Use a {tone} tone. Each question must include:\n"
+            "You are provided with study notes extracted directly from user-uploaded PDFs. "
+            "Ground every question strictly in this content and do not invent outside facts.\n\n"
+            f"Study summary:\n{context_summary or '(Summary unavailable — rely on the detailed excerpts below.)'}\n\n"
+            f"Detailed excerpts (reference the [n] labels in your reasoning):\n{context_block}\n\n"
+            f"Create {count} {label} questions at a {difficulty} difficulty while using a {tone} tone. Each JSON question must include:\n"
             "- question (string)\n"
-            "- question_type (must match input)\n"
-            "- options (array of 4 concise options) for multiple-choice, otherwise omit\n"
+            "- question_type (must equal the requested type)\n"
+            "- options (array of 4 concise options) when question_type is multiple_choice; omit for others\n"
             "- correct_answer (string)\n"
-            "- explanation (1-2 sentences)\n"
+            "- explanation (1-2 sentences that reference the excerpts)\n"
             "- difficulty (easy/medium/hard)\n"
             "- tags (array of keywords)\n"
-            "Return JSON: {\"questions\": [ ... ]}."
+            "- source_summary (cite which excerpt(s) informed the answer, e.g., '[2] energy bands in Figure 3')\n"
+            "Return valid JSON shaped as {\"questions\": [ ... ]} and never include plain text."
         )
 
     def _build_evaluation_prompt(
@@ -248,11 +374,11 @@ class QuizGenerator:
         if not sources:
             return "(no additional sources)"
         lines = []
-        for idx, source in enumerate(sources[:3], start=1):
+        for idx, source in enumerate(sources[:5], start=1):
             meta = source.get("metadata", {})
             filename = meta.get("filename") or meta.get("material_id") or "material"
             snippet = (source.get("snippet") or "").strip().replace("\n", " ")
-            lines.append(f"[{idx}] {filename}: {snippet[:280]}")
+            lines.append(f"[{idx}] {filename}: {snippet[:500]}")
         return "\n".join(lines)
 
     def _normalize_answer(self, value: str) -> str:

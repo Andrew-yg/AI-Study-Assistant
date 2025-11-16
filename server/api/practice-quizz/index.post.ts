@@ -22,7 +22,11 @@ const fetchProcessedMaterials = async (conversationObjectId: mongoose.Types.Obje
     .lean()
 }
 
-const reprocessMaterialsIfNeeded = async (conversationObjectId: mongoose.Types.ObjectId, userObjectId: mongoose.Types.ObjectId) => {
+const reprocessMaterials = async (
+  conversationObjectId: mongoose.Types.ObjectId,
+  userObjectId: mongoose.Types.ObjectId,
+  options?: { force?: boolean }
+) => {
   await ensureServiceHealthy('rag')
 
   const allMaterials = await LearningMaterial.find({
@@ -31,10 +35,14 @@ const reprocessMaterialsIfNeeded = async (conversationObjectId: mongoose.Types.O
   }).lean()
 
   if (!allMaterials.length) {
-    return { processed: [], total: 0 }
+    return { processed: [], total: 0, reprocessed: 0 }
   }
 
-  const reprocessable = allMaterials.filter((material) => ['failed', 'pending'].includes(material.processingStatus || 'pending'))
+  const reprocessable = options?.force
+    ? allMaterials
+    : allMaterials.filter((material) => ['failed', 'pending'].includes(material.processingStatus || 'pending'))
+
+  let reprocessedCount = 0
 
   for (const material of reprocessable) {
     try {
@@ -51,6 +59,8 @@ const reprocessMaterialsIfNeeded = async (conversationObjectId: mongoose.Types.O
         processedAt: new Date(),
         vectorDocumentCount: ragResult.documents,
       })
+
+      reprocessedCount += 1
     } catch (error: any) {
       console.error('[PracticeQuiz] Reprocessing failed for material', material._id, error)
       await LearningMaterial.findByIdAndUpdate(material._id, {
@@ -61,7 +71,20 @@ const reprocessMaterialsIfNeeded = async (conversationObjectId: mongoose.Types.O
   }
 
   const processed = await fetchProcessedMaterials(conversationObjectId, userObjectId)
-  return { processed, total: allMaterials.length }
+  return { processed, total: allMaterials.length, reprocessed: reprocessedCount }
+}
+
+const shouldRetryWithReprocess = (message: string) => {
+  if (!message) {
+    return false
+  }
+
+  const normalized = message.toLowerCase()
+  return (
+    normalized.includes('无法从学习资料中检索到内容') ||
+    normalized.includes('no sources') ||
+    normalized.includes('no context')
+  )
 }
 
 const bodySchema = z.object({
@@ -107,7 +130,7 @@ export default defineEventHandler(async (event) => {
   let materialDocs = await fetchProcessedMaterials(conversationObjectId, userObjectId)
 
   if (!materialDocs.length) {
-    const { processed, total } = await reprocessMaterialsIfNeeded(conversationObjectId, userObjectId)
+    const { processed, total } = await reprocessMaterials(conversationObjectId, userObjectId)
     materialDocs = processed
 
     if (!materialDocs.length) {
@@ -132,26 +155,60 @@ export default defineEventHandler(async (event) => {
 
   await ensureServiceHealthy('quiz')
 
-  const upstreamResponse = await fetch(`${quizServiceUrl}/generate`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      material_ids: materialIds.map((id) => id.toString()),
-      user_id: userId,
-      question_type: questionType,
-      difficulty,
-      count,
-    }),
-  })
-
-  if (!upstreamResponse.ok) {
-    const errorText = await upstreamResponse.text().catch(() => 'Quiz service error')
-    throw createError({ statusCode: 502, message: errorText })
+  const requestPayload = {
+    material_ids: materialIds.map((id) => id.toString()),
+    user_id: userId,
+    question_type: questionType,
+    difficulty,
+    count,
   }
 
-  const payload = await upstreamResponse.json()
+  let payload: any = null
+  let reprocessAttempted = false
+
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const upstreamResponse = await fetch(`${quizServiceUrl}/generate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestPayload),
+    })
+
+    if (upstreamResponse.ok) {
+      payload = await upstreamResponse.json()
+      break
+    }
+
+    const errorText = await upstreamResponse.text().catch(() => 'Quiz service error')
+    let message = errorText
+    try {
+      const parsed = JSON.parse(errorText)
+      if (typeof parsed?.detail === 'string') {
+        message = parsed.detail
+      }
+    } catch (_) {}
+
+    if (!reprocessAttempted && shouldRetryWithReprocess(message)) {
+      reprocessAttempted = true
+      await reprocessMaterials(conversationObjectId, userObjectId, { force: true })
+      materialDocs = await fetchProcessedMaterials(conversationObjectId, userObjectId)
+
+      if (!materialDocs.length) {
+        throw createError({ statusCode: 502, message: '学习资料重新索引失败，请稍后再试。' })
+      }
+
+      requestPayload.material_ids = materialDocs.map((doc) => doc._id!.toString())
+      continue
+    }
+
+    throw createError({ statusCode: 502, message })
+  }
+
+  if (!payload) {
+    throw createError({ statusCode: 502, message: 'Quiz service is unavailable. Please try again later.' })
+  }
+
   const questions = Array.isArray(payload.questions) ? payload.questions : []
   if (!questions.length) {
     throw createError({ statusCode: 502, message: 'Quiz service returned no questions' })
@@ -174,6 +231,7 @@ export default defineEventHandler(async (event) => {
       explanation: question.explanation || '',
       difficulty: (question.difficulty || difficulty).toLowerCase(),
       tags: question.tags || [],
+      sourceSummary: question.source_summary || question.sourceSummary || '',
     })),
   })
 

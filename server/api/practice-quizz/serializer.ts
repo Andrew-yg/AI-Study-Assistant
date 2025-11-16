@@ -25,6 +25,7 @@ export const serializePracticeQuiz = (doc: IPracticeQuiz, options: SerializeOpti
       difficulty: question.difficulty,
       tags: question.tags || [],
       explanation: question.explanation || '',
+      sourceSummary: question.sourceSummary || '',
       ...(revealAnswers ? { correctAnswer: question.correctAnswer } : {}),
     })),
     submissions: (doc.submissions || []).map(submission => ({
@@ -36,7 +37,7 @@ export const serializePracticeQuiz = (doc: IPracticeQuiz, options: SerializeOpti
         isCorrect: answer.isCorrect,
         feedback: answer.feedback,
         score: answer.score,
-        correctAnswer: revealAnswers ? answer.correctAnswer : undefined,
+        correctAnswer: answer.correctAnswer,
       })),
     })),
     createdAt: doc.createdAt,

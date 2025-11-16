@@ -16,6 +16,7 @@ export interface IPracticeQuizQuestion {
   explanation?: string
   difficulty: PracticeQuizDifficulty
   tags?: string[]
+  sourceSummary?: string
 }
 
 export interface IPracticeQuizSubmissionAnswer {
@@ -82,6 +83,10 @@ const PracticeQuizQuestionSchema = new Schema<IPracticeQuizQuestion>(
     tags: {
       type: [String],
       default: [],
+    },
+    sourceSummary: {
+      type: String,
+      default: '',
     },
   },
   { _id: true }

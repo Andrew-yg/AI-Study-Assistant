@@ -7,6 +7,7 @@ export interface PracticeQuizQuestion {
   difficulty: 'easy' | 'medium' | 'hard'
   tags: string[]
   explanation: string
+  sourceSummary?: string
 }
 
 export interface PracticeQuizSubmissionAnswer {
@@ -14,7 +15,7 @@ export interface PracticeQuizSubmissionAnswer {
   userAnswer: string
   isCorrect: boolean
   feedback: string
-  correctAnswer?: string
+  correctAnswer: string
   score: number
 }
 
