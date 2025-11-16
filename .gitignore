@@ -1,11 +1,49 @@
+# Dependencies
 node_modules
+package-lock.json
+
+# Logs
 *.log*
+logs
+
+# Nuxt
 .nuxt
 .nitro
 .cache
 .output
 .data
-.env
 dist
+
+# Environment
+.env
+.env.local
+
+# Testing
 playwright-report
 test-results
+coverage
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+*.egg-info
+.pytest_cache
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Temporary files
+.bolt/
+pythagora-core/
+*.tmp
+*.bak

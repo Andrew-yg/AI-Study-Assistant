@@ -10,8 +10,8 @@
 	</p>
 	<p>
 		<a href="#getting-started">Getting Started</a>
-		· <a href="./HOW_TO_RUN.md">Runbook</a>
-		· <a href="./QUICK_START.md">Quick Start</a>
+		· <a href="./docs/HOW_TO_RUN.md">Runbook</a>
+		· <a href="./docs/QUICK_START.md">Quick Start</a>
 		· <a href="https://github.com/Andrew-yg/AI-Study-Assistant/issues">Report Bug</a>
 	</p>
 </div>
@@ -24,6 +24,7 @@
 	- [Built With](#built-with)
 - [Key Features](#-key-features)
 - [Architecture](#-architecture)
+- [Project Structure](./PROJECT_STRUCTURE.md)
 - [Getting Started](#-getting-started)
 	- [Prerequisites](#prerequisites)
 	- [Installation](#installation)
@@ -127,7 +128,7 @@ cp .env.example .env
 | `OPENAI_API_KEY` | Required by all Python services |
 | `BRAVE_SEARCH_API_KEY` (optional) | Enables supplemental web search |
 
-Need extra context? See [`QUICK_START.md`](./QUICK_START.md) and [`HOW_TO_RUN.md`](./HOW_TO_RUN.md).
+Need extra context? See [`docs/QUICK_START.md`](./docs/QUICK_START.md) and [`docs/HOW_TO_RUN.md`](./docs/HOW_TO_RUN.md).
 
 ---
 
@@ -197,7 +198,7 @@ Each service exposes Swagger docs at `http://localhost:<port>/docs`.
 - [ ] Advanced analytics dashboard (study streaks, retention curves)
 - [ ] Multi-user org sharing + workspace permissions
 
-Track progress inside [`NEXT_STEPS.md`](./NEXT_STEPS.md) and [`optimized-implementation-plan.md`](./optimized-implementation-plan.md).
+Track progress inside [`docs/NEXT_STEPS.md`](./docs/NEXT_STEPS.md) and [`docs/optimized-implementation-plan.md`](./docs/optimized-implementation-plan.md).
 
 ---
 
