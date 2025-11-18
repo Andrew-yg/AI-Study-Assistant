@@ -18,6 +18,9 @@ dist
 .env
 .env.local
 
+# Kubernetes secrets (never commit real credentials)
+k8s/secrets.yaml
+
 # Testing
 playwright-report
 test-results

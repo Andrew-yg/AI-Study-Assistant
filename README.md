@@ -30,6 +30,7 @@
 	- [Installation](#installation)
 	- [Environment Variables](#environment-variables)
 - [Running the Stack](#-running-the-stack)
+- [Deploying to Kubernetes](#-deploying-to-kubernetes)
 - [Usage Walkthrough](#-usage-walkthrough)
 - [Testing](#-testing)
 - [API & Services](#-api--services)
@@ -93,7 +94,7 @@ AI Study Assistant turns loose PDFs into conversational study sessions. Upload m
 
 ### Prerequisites
 
-- Node.js **18+**
+- Node.js **20.19+** or **22.12+** (required by Nuxt 3.20)
 - Python **3.10+** with `pip`
 - MongoDB Atlas cluster & credentials
 - Cloudflare R2 bucket + API token
@@ -143,6 +144,10 @@ Need extra context? See [`docs/QUICK_START.md`](./docs/QUICK_START.md) and [`doc
 | `npm run test:e2e` | Execute Playwright suite (auto-launches Nuxt on port 3100) |
 
 Health checks are available via `GET /api/health` (Nuxt) and `/health` on each Python service. The Node layer returns a 503 with remediation tips if a dependency is down.
+
+## ☸️ Deploying to Kubernetes
+
+Ready for production traffic? Follow [`docs/DEPLOY_TO_K8S.md`](./docs/DEPLOY_TO_K8S.md) for detailed instructions on building/pushing container images, creating the ConfigMap & secrets, applying the manifests under `k8s/`, and wiring the ingress for your own domain + TLS certificate. Update the sample registry names and `study.example.com` placeholders before applying the manifests.
 
 ---
 

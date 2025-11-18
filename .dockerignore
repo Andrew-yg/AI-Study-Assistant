@@ -1,0 +1,31 @@
+# Node / Nuxt
+node_modules
+.nitro
+.nuxt
+.output
+.cache
+.vscode
+.git
+.gitignore
+Dockerfile*
+README.md
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+*.pyi
+*.pyz
+
+# OS / editor
+.DS_Store
+*.swp
+*.swo
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: asa-config
+  namespace: ai-study-assistant
+data:
+  BASE_URL: "https://study.example.com"
+  RAG_SERVICE_URL: "http://rag-service.ai-study-assistant.svc.cluster.local:8001"
+  AGENT_SERVICE_URL: "http://agent-service.ai-study-assistant.svc.cluster.local:8002"
+  QUIZ_SERVICE_URL: "http://quiz-service.ai-study-assistant.svc.cluster.local:8003"
+  NODE_ENV: "production"
+  NITRO_HOST: "0.0.0.0"
+  NITRO_PORT: "3000"
+  PYTHONUNBUFFERED: "1"
+  OPENAI_EMBEDDING_MODEL: "text-embedding-3-large"
+  OPENAI_COMPLETION_MODEL: "gpt-4o-mini"
+  MONGODB_VECTOR_DB: "AIAssistant"
+  MONGODB_VECTOR_COLLECTION: "rag_vectors"
+  MONGODB_VECTOR_INDEX: "vector_index"
