@@ -250,4 +250,54 @@ const handleSave = async () => {
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+@media (max-width: 640px) {
+  .modal-content {
+    padding: 1.25rem;
+    max-width: 100%;
+  }
+
+  .modal-header h3 {
+    font-size: 1.125rem;
+  }
+
+  .edit-form {
+    gap: 1rem;
+  }
+
+  .form-section {
+    gap: 0.375rem;
+  }
+
+  .form-label {
+    font-size: 0.8125rem;
+  }
+
+  .form-input,
+  .form-select,
+  .form-textarea {
+    padding: 0.625rem;
+    font-size: 0.9375rem;
+  }
+
+  .modal-footer {
+    flex-direction: column-reverse;
+    gap: 0.5rem;
+  }
+
+  .cancel-button,
+  .save-button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .modal-content {
+    padding: 1rem;
+  }
+
+  .modal-header {
+    margin-bottom: 1rem;
+  }
+}
 </style>

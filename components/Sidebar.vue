@@ -363,13 +363,28 @@ const handleLogout = async () => {
 
 @media (max-width: 768px) {
   .sidebar {
-    width: 100%;
-    max-width: 300px;
-    position: absolute;
+    width: 280px;
+    position: fixed;
     top: 0;
     left: 0;
     bottom: 0;
-    z-index: 100;
+    z-index: 1000;
+    transform: translateX(-100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .sidebar.mobile-open {
+    transform: translateX(0);
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.15);
+  }
+
+  .sidebar.collapsed {
+    width: 280px;
+    transform: translateX(-100%);
+  }
+
+  .toggle-button {
+    display: none;
   }
 }
 </style>

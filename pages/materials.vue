@@ -664,15 +664,72 @@ const formatDate = (dateString: string) => {
   .page-header {
     flex-direction: column;
     align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .header-content h1 {
+    font-size: 1.5rem;
+  }
+
+  .header-content p {
+    font-size: 0.9rem;
   }
 
   .header-actions {
     width: 100%;
-    align-items: flex-start;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .filter-group {
+    width: 100%;
+    min-width: auto;
+  }
+
+  .filter-select {
+    width: 100%;
+    min-width: auto;
+  }
+
+  .primary-button,
+  .back-button {
+    width: 100%;
+    justify-content: center;
   }
 
   .materials-grid {
     grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .material-card {
+    padding: 1.25rem;
+  }
+
+  .card-actions {
+    flex-direction: column;
+  }
+
+  .action-button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .materials-page {
+    padding: 0.75rem;
+  }
+
+  .page-header {
+    margin-bottom: 1.5rem;
+  }
+
+  .header-content h1 {
+    font-size: 1.25rem;
+  }
+
+  .material-title {
+    font-size: 1rem;
   }
 }
 </style>

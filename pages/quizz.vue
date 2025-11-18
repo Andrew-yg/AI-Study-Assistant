@@ -912,13 +912,23 @@ onMounted(async () => {
   }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 768px) {
   .practice-layout {
-    padding: 1.25rem;
+    padding: 1rem;
   }
 
   .practice-header {
     flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .practice-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .header-subtitle {
+    font-size: 0.9rem;
   }
 
   .header-actions {
@@ -926,13 +936,126 @@ onMounted(async () => {
     flex-direction: column;
   }
 
-  .submit-panel {
+  .ghost-button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .practice-sidebar {
+    padding: 0.875rem;
+  }
+
+  .sidebar-head h3 {
+    font-size: 0.95rem;
+  }
+
+  .practice-main {
+    padding: 1.25rem;
+  }
+
+  .quiz-overview {
     flex-direction: column;
-    gap: 0.75rem;
+  }
+
+  .quiz-overview-stats {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .question-card {
+    padding: 0.875rem 1rem;
+  }
+
+  .question-text {
+    font-size: 1rem;
   }
 
   .multiple-choice-grid {
     grid-template-columns: 1fr;
+  }
+
+  .binary-options {
+    flex-direction: column;
+  }
+
+  .choice-option {
+    width: 100%;
+  }
+
+  .submit-panel {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .submit-button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 640px) {
+  .practice-layout {
+    padding: 0.75rem;
+  }
+
+  .eyebrow {
+    font-size: 0.7rem;
+  }
+
+  .practice-header h1 {
+    font-size: 1.25rem;
+  }
+
+  .header-context {
+    font-size: 0.85rem;
+  }
+
+  .header-subtitle {
+    font-size: 0.85rem;
+  }
+
+  .quiz-pill {
+    font-size: 0.8rem;
+    padding: 0.2rem 0.6rem;
+  }
+
+  .quiz-overview h2 {
+    font-size: 1.25rem;
+  }
+
+  .stat-label {
+    font-size: 0.75rem;
+  }
+
+  .stat-value {
+    font-size: 1rem;
+  }
+
+  .question-head {
+    flex-wrap: wrap;
+  }
+
+  .question-index {
+    font-size: 0.9rem;
+  }
+
+  .question-type-pill {
+    font-size: 0.75rem;
+  }
+
+  .question-text {
+    font-size: 0.95rem;
+  }
+
+  .submission-summary {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .score-circle {
+    width: 56px;
+    height: 56px;
+    font-size: 1.1rem;
   }
 }
 </style>

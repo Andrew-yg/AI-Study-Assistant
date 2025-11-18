@@ -269,21 +269,49 @@ const handleAuthSuccess = () => {
 }
 
 @media (max-width: 768px) {
+  .navbar {
+    padding: 0.75rem 1rem;
+  }
+
+  .logo-icon {
+    font-size: 1.5rem;
+  }
+
+  .brand-name {
+    font-size: 1rem;
+  }
+
+  .brand-subtitle {
+    font-size: 0.65rem;
+  }
+
+  .background-logos {
+    display: none; /* Hide background logos on mobile for better readability */
+  }
+
+  .hero-section {
+    padding: 4rem 1.5rem 3rem;
+  }
+
   .hero-title {
-    font-size: 2.5rem;
+    font-size: 2rem;
   }
 
   .hero-subtitle {
     font-size: 1rem;
+    margin-bottom: 2rem;
   }
 
   .cta-buttons {
     flex-direction: column;
     width: 100%;
+    gap: 0.75rem;
   }
 
   .btn {
     width: 100%;
+    padding: 0.875rem 1.5rem;
+    font-size: 1rem;
   }
 }
 </style>

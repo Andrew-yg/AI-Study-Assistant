@@ -9,6 +9,7 @@ body {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
 }
 
 button {
@@ -18,4 +19,15 @@ button {
 
 input, textarea {
   font-family: inherit;
+}
+
+/* Mobile viewport fix */
+@media (max-width: 768px) {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  
+  body {
+    font-size: 16px; /* Prevent zoom on input focus */
+  }
 }

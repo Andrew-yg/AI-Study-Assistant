@@ -1,6 +1,10 @@
 <template>
   <div class="chat-page">
+    <!-- Mobile sidebar overlay -->
+    <div v-if="showMobileSidebar" class="mobile-sidebar-overlay" @click="showMobileSidebar = false"></div>
+    
     <Sidebar
+      :class="{ 'mobile-open': showMobileSidebar }"
       :sessions="chatSessions"
       :current-session-id="currentSessionId"
       @new-chat="createNewChat"
@@ -11,6 +15,11 @@
 
     <div class="main-content">
       <div class="user-header">
+        <button class="mobile-menu-button" @click="showMobileSidebar = !showMobileSidebar">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 12h18M3 6h18M3 18h18" />
+          </svg>
+        </button>
         <button class="user-button" @click="showUserMenu = !showUserMenu">
           <div class="user-avatar">{{ userInitials }}</div>
           <span class="user-name">{{ userName }}</span>
@@ -382,6 +391,7 @@ const messagesContainer = ref<HTMLElement | null>(null)
 const inputMessage = ref('')
 const showFileUpload = ref(false)
 const showUserMenu = ref(false)
+const showMobileSidebar = ref(false)
 const loading = ref(false)
 const conversationMaterials = ref<ConversationMaterial[]>([])
 const materialsLoading = ref(false)
@@ -510,6 +520,7 @@ const createNewChat = async () => {
 const selectSession = async (sessionId: string) => {
   try {
     loading.value = true
+    showMobileSidebar.value = false // Close mobile sidebar after selection
     currentSessionId.value = sessionId
     const [fetchedMessages] = await Promise.all([
   conversationsAPI.fetchMessages(sessionId),
@@ -1079,6 +1090,24 @@ const handleLogout = async () => {
   display: flex;
   height: 100vh;
   background: #f9fafb;
+  position: relative;
+}
+
+.mobile-sidebar-overlay {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .mobile-sidebar-overlay {
+    display: block;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 999;
+  }
 }
 
 .main-content {
@@ -1095,7 +1124,26 @@ const handleLogout = async () => {
   border-bottom: 1px solid #e5e7eb;
   display: flex;
   justify-content: flex-end;
+  align-items: center;
+  gap: 1rem;
   position: relative;
+}
+
+.mobile-menu-button {
+  display: none;
+  background: transparent;
+  border: none;
+  color: #1a1a1a;
+  padding: 0.5rem;
+  margin-right: auto;
+}
+
+@media (max-width: 768px) {
+  .mobile-menu-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
 }
 
 .user-button {
@@ -2097,6 +2145,16 @@ const handleLogout = async () => {
 }
 
 @media (max-width: 768px) {
+  .chat-page {
+    flex-direction: column;
+    height: 100vh;
+    height: 100dvh; /* Dynamic viewport height for mobile browsers */
+  }
+
+  .main-content {
+    width: 100%;
+  }
+
   .user-header {
     padding: 0.75rem 1rem;
   }
@@ -2125,12 +2183,141 @@ const handleLogout = async () => {
     padding: 1rem;
   }
 
+  .empty-state {
+    padding: 2rem 1rem;
+  }
+
+  .empty-icon {
+    font-size: 3rem;
+  }
+
+  .empty-state h2 {
+    font-size: 1.5rem;
+  }
+
+  .empty-state p {
+    font-size: 0.9rem;
+  }
+
+  .message-entry {
+    gap: 0.75rem;
+  }
+
+  .message-avatar {
+    width: 32px;
+    height: 32px;
+    font-size: 0.85rem;
+  }
+
+  .message-content {
+    padding: 0.875rem 1rem;
+    font-size: 0.9375rem;
+  }
+
+  .conversation-materials {
+    padding: 0.875rem 1rem;
+  }
+
+  .materials-header h3 {
+    font-size: 0.95rem;
+  }
+
+  .materials-header span {
+    font-size: 0.8rem;
+  }
+
   .materials-strip {
     flex-direction: column;
+    gap: 0.75rem;
   }
 
   .material-card {
     flex: 1 1 auto;
+    width: 100%;
+  }
+
+  .quiz-panel {
+    padding: 1rem;
+  }
+
+  .quiz-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .quiz-header h3 {
+    font-size: 1rem;
+  }
+
+  .quiz-header p {
+    font-size: 0.85rem;
+  }
+
+  .quiz-header-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .quiz-form {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+
+  .quiz-field {
+    font-size: 0.8rem;
+  }
+
+  .quiz-field select,
+  .quiz-field input {
+    font-size: 0.9rem;
+    padding: 0.5rem;
+  }
+
+  .generate-quiz-button {
+    width: 100%;
+    padding: 0.65rem 1rem;
+  }
+
+  .quiz-history-card {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .quiz-history-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .telemetry-card {
+    padding: 0.875rem;
+  }
+
+  .telemetry-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .telemetry-title {
+    font-size: 0.9rem;
+  }
+
+  .telemetry-subtitle {
+    font-size: 0.8rem;
+  }
+
+  .input-area {
+    padding: 1rem 0 0;
+  }
+
+  .input-container {
+    padding: 0.5rem 0.75rem;
+  }
+
+  .message-input {
+    font-size: 0.9375rem;
   }
 }
 
@@ -2147,6 +2334,19 @@ const handleLogout = async () => {
     right: 0.5rem;
     left: auto;
     min-width: 160px;
+  }
+
+  .chat-container {
+    padding: 0.75rem;
+  }
+
+  .quiz-header-actions {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .quiz-refresh {
+    width: 100%;
   }
 }
 </style>

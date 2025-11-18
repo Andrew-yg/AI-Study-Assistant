@@ -244,6 +244,87 @@ const handleUpload = async () => {
   overflow-y: auto;
 }
 
+@media (max-width: 640px) {
+  .modal-content {
+    padding: 1.25rem;
+    max-height: 95vh;
+  }
+
+  .modal-header h3 {
+    font-size: 1.125rem;
+  }
+
+  .upload-form {
+    gap: 1rem;
+  }
+
+  .form-section {
+    gap: 0.375rem;
+  }
+
+  .form-label {
+    font-size: 0.8125rem;
+  }
+
+  .form-input,
+  .form-select,
+  .form-textarea {
+    padding: 0.625rem;
+    font-size: 0.9375rem;
+  }
+
+  .upload-area {
+    padding: 1.25rem;
+  }
+
+  .upload-icon svg {
+    width: 40px;
+    height: 40px;
+  }
+
+  .upload-text {
+    font-size: 0.9375rem;
+  }
+
+  .upload-hint {
+    font-size: 0.8125rem;
+  }
+
+  .file-selected {
+    padding: 0.875rem;
+    gap: 0.75rem;
+  }
+
+  .file-icon {
+    font-size: 1.75rem;
+  }
+
+  .file-name {
+    font-size: 0.9375rem;
+  }
+
+  .modal-footer {
+    flex-direction: column-reverse;
+    gap: 0.5rem;
+  }
+
+  .cancel-button,
+  .upload-button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .modal-content {
+    padding: 1rem;
+    border-radius: 0.75rem;
+  }
+
+  .modal-header {
+    margin-bottom: 1rem;
+  }
+}
+
 .modal-header {
   display: flex;
   align-items: center;

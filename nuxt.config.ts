@@ -3,6 +3,14 @@ export default defineNuxtConfig({
   compatibilityDate: '2024-04-03',
   devtools: { enabled: false },
   css: ['~/assets/css/main.css'],
+  app: {
+    head: {
+      meta: [
+        { name: 'viewport', content: 'width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes' },
+        { charset: 'utf-8' }
+      ]
+    }
+  },
   runtimeConfig: {
     // Private keys (server-side only)
     mongodbUri: process.env.MONGODB_URI,

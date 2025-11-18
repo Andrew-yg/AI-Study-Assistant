@@ -80,6 +80,25 @@ const handleGoogleAuth = async () => {
   color: white;
 }
 
+@media (max-width: 480px) {
+  .modal-content {
+    padding: 2rem 1.5rem;
+  }
+
+  .brand-name {
+    font-size: 1.25rem;
+  }
+
+  .modal-description {
+    font-size: 0.875rem;
+  }
+
+  .oauth-button {
+    padding: 0.875rem;
+    font-size: 0.9375rem;
+  }
+}
+
 .close-button {
   position: absolute;
   top: 1rem;
