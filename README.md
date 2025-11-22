@@ -43,23 +43,7 @@
 
 ---
 
-## 🆕 Recent Updates
 
-### MongoDB Migration Complete (November 2024)
-The project has been successfully migrated from Supabase to a modern MongoDB + Cloudflare R2 stack:
-
-- ✅ **Database**: Migrated from PostgreSQL (Supabase) to MongoDB Atlas with Mongoose ODM
-- ✅ **Authentication**: Replaced Supabase Auth with Google OAuth 2.0 + JWT
-- ✅ **Storage**: Migrated from Supabase Storage to Cloudflare R2 (S3-compatible)
-- ✅ **Field Naming**: Standardized to camelCase (previously snake_case)
-- ✅ **Vector Search**: Implemented MongoDB Atlas Vector Search for semantic retrieval
-- ✅ **Microservices**: Refactored Python services (RAG, Agent, Quiz) with FastAPI
-- ✅ **Testing**: Added comprehensive Playwright E2E test suite
-- ✅ **Deployment**: Added Kubernetes manifests and Docker configurations
-
-See [`docs/MONGODB_MIGRATION.md`](./docs/MONGODB_MIGRATION.md) for detailed migration documentation.
-
----
 
 ## 🧠 About the Project
 
