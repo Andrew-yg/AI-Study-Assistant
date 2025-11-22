@@ -40,11 +40,50 @@
 - [Contact](#-contact)
 - [Acknowledgments](#-acknowledgments)
 
+
+---
+
+## 🆕 Recent Updates
+
+### MongoDB Migration Complete (November 2024)
+The project has been successfully migrated from Supabase to a modern MongoDB + Cloudflare R2 stack:
+
+- ✅ **Database**: Migrated from PostgreSQL (Supabase) to MongoDB Atlas with Mongoose ODM
+- ✅ **Authentication**: Replaced Supabase Auth with Google OAuth 2.0 + JWT
+- ✅ **Storage**: Migrated from Supabase Storage to Cloudflare R2 (S3-compatible)
+- ✅ **Field Naming**: Standardized to camelCase (previously snake_case)
+- ✅ **Vector Search**: Implemented MongoDB Atlas Vector Search for semantic retrieval
+- ✅ **Microservices**: Refactored Python services (RAG, Agent, Quiz) with FastAPI
+- ✅ **Testing**: Added comprehensive Playwright E2E test suite
+- ✅ **Deployment**: Added Kubernetes manifests and Docker configurations
+
+See [`docs/MONGODB_MIGRATION.md`](./docs/MONGODB_MIGRATION.md) for detailed migration documentation.
+
 ---
 
 ## 🧠 About the Project
 
-AI Study Assistant turns loose PDFs into conversational study sessions. Upload materials once, let the Retrieval Augmented Generation (RAG) pipeline chunk and index them inside MongoDB Atlas Vector Search, and interact with a fast UI that streams tutor-style answers and personalized quizzes.
+**AI Study Assistant** is a comprehensive learning platform that transforms static study materials into interactive, AI-powered learning experiences. Built with modern web technologies and a microservices architecture, it provides students with an intelligent tutor that understands their course materials and generates personalized practice content.
+
+### What Makes It Special?
+
+The platform leverages **Retrieval Augmented Generation (RAG)** to create a contextual learning environment where:
+- PDFs are automatically processed, chunked, and embedded into a vector database
+- Student questions are answered using both uploaded materials and real-time web search
+- Practice quizzes are generated from actual course content, not generic templates
+- Every interaction is transparent, showing which sources informed each response
+
+### Current Status
+
+✅ **Fully Functional** - The project is production-ready with:
+- Complete authentication system (Google OAuth + JWT)
+- Working RAG pipeline with MongoDB Atlas Vector Search
+- Streaming AI chat with telemetry
+- Quiz generation and evaluation
+- Responsive UI optimized for desktop and mobile
+- Comprehensive E2E test coverage
+- Kubernetes deployment configurations
+- Docker support for containerized deployment
 
 ### Built With
 
@@ -60,12 +99,50 @@ AI Study Assistant turns loose PDFs into conversational study sessions. Upload m
 
 ## ✨ Key Features
 
-- **Google OAuth + JWT** login flow with automatic session refresh.
-- **Zero-copy ingestion**: Upload PDFs to Cloudflare R2, auto-chunk, embed, and store vectors in MongoDB.
-- **Streaming tutor**: A LangChain agent that combines retrieved context with Brave Search snippets for grounded answers.
-- **Practice quizzes**: Dedicated quiz generator/evaluator microservice that reuses the same context window.
-- **Health-aware backend**: Nuxt server middleware verifies downstream Python services before making requests.
-- **All-in-one dev command**: `npm run dev` simultaneously boots Nuxt + rag + agent + quiz services.
+### 🔐 Authentication & User Management
+- **Google OAuth 2.0** integration with JWT-based session management
+- Automatic token refresh and secure session handling
+- Protected routes with authentication middleware
+- User profile management with MongoDB persistence
+
+### 📚 Intelligent Document Processing
+- **Zero-copy PDF ingestion**: Upload PDFs directly to Cloudflare R2 storage
+- Automatic text extraction, chunking, and vectorization
+- MongoDB Atlas Vector Search for semantic document retrieval
+- Support for multiple document types (lectures, textbooks, slides, assignments)
+- Per-conversation material organization for contextual learning
+
+### 💬 AI-Powered Chat Interface
+- **Streaming responses** with real-time token-by-token display
+- LangChain-based agent orchestration combining:
+  - RAG (Retrieval Augmented Generation) from uploaded materials
+  - Brave Search API for supplemental web context
+  - GPT-4 for intelligent response generation
+- **Response telemetry** showing:
+  - Model used for generation
+  - Referenced course materials with relevance scores
+  - Web search results and citations
+  - Tool call transparency
+- Conversation management (create, rename, delete, switch)
+- Message history persistence
+
+### 🎯 Adaptive Practice Quizzes
+- **Intelligent quiz generation** from uploaded materials
+- Multiple question types:
+  - Multiple choice
+  - True/False
+  - Short answer
+- Configurable difficulty levels (easy, medium, hard)
+- Automated answer evaluation with detailed feedback
+- Quiz history and progress tracking
+- Per-conversation quiz organization
+
+### 🏗️ Robust Architecture
+- **Health-aware backend**: Nuxt server middleware verifies downstream Python services before making requests
+- **Microservices architecture** with independent RAG, Agent, and Quiz services
+- **All-in-one dev command**: `npm run dev` simultaneously boots Nuxt + rag + agent + quiz services
+- **Comprehensive error handling** with user-friendly error messages
+- **E2E testing** with Playwright for critical user flows
 
 ---
 

@@ -1,60 +1,60 @@
-# 🚀 快速开始指南
+# 🚀 Quick Start Guide
 
-## 重构完成！
+## Refactoring Complete!
 
-项目已成功从 Supabase 重构到 MongoDB + MongoDB Atlas，使用 Google OAuth 和 JWT 认证。
+The project has been successfully refactored from Supabase to MongoDB + MongoDB Atlas, using Google OAuth and JWT authentication.
 
-## ✅ 已完成的改动
+## ✅ Completed Changes
 
-### 后端
-- ✅ 安装 MongoDB、Mongoose、JWT、Passport 等依赖
-- ✅ 创建 MongoDB 连接工具 (`server/utils/mongodb.ts`)
-- ✅ 创建 Cloudflare R2 存储工具 (`server/utils/r2.ts`)
-- ✅ 创建 4 个 Mongoose 模型：User, Conversation, Message, LearningMaterial
-- ✅ 实现 JWT 认证中间件 (`server/utils/auth.ts`)
-- ✅ 实现 Google OAuth 登录流程
-  - `/api/auth/google` - 发起 OAuth
-  - `/api/auth/google/callback` - 回调处理
-  - `/api/auth/me` - 获取当前用户
-  - `/api/auth/logout` - 登出
-- ✅ 重构所有 API endpoints 使用 MongoDB
+### Backend
+- ✅ Installed MongoDB, Mongoose, JWT, Passport and other dependencies
+- ✅ Created MongoDB connection utility (`server/utils/mongodb.ts`)
+- ✅ Created Cloudflare R2 storage utility (`server/utils/r2.ts`)
+- ✅ Created 4 Mongoose models: User, Conversation, Message, LearningMaterial
+- ✅ Implemented JWT authentication middleware (`server/utils/auth.ts`)
+- ✅ Implemented Google OAuth login flow
+  - `/api/auth/google` - Initiate OAuth
+  - `/api/auth/google/callback` - Callback handler
+  - `/api/auth/me` - Get current user
+  - `/api/auth/logout` - Logout
+- ✅ Refactored all API endpoints to use MongoDB
   - Conversations (CRUD)
   - Messages (CRUD)
   - Materials (CRUD)
-  - Upload (使用 Cloudflare R2)
+  - Upload (using Cloudflare R2)
 
-### 前端
-- ✅ 删除 Supabase 客户端插件
-- ✅ 重构 `composables/useAuth.ts` 使用 JWT
-- ✅ 重构 `composables/useConversations.ts`
-- ✅ 更新 `pages/auth/callback.vue` 处理 token
-- ✅ 更新 `components/AuthModal.vue` (移除 GitHub，仅保留 Google)
-- ✅ 创建 `composables/useAuthFetch.ts` 辅助函数
+### Frontend
+- ✅ Removed Supabase client plugin
+- ✅ Refactored `composables/useAuth.ts` to use JWT
+- ✅ Refactored `composables/useConversations.ts`
+- ✅ Updated `pages/auth/callback.vue` to handle tokens
+- ✅ Updated `components/AuthModal.vue` (removed GitHub, kept Google only)
+- ✅ Created `composables/useAuthFetch.ts` helper function
 
-### 配置
-- ✅ 更新 `nuxt.config.ts`
-- ✅ 创建 `.env.example`
-- ✅ 更新 `package.json`
+### Configuration
+- ✅ Updated `nuxt.config.ts`
+- ✅ Created `.env.example`
+- ✅ Updated `package.json`
 
-## 📋 下一步操作
+## 📋 Next Steps
 
-### 1. 配置环境变量
+### 1. Configure Environment Variables
 
-复制 `.env.example` 为 `.env`:
+Copy `.env.example` to `.env`:
 ```bash
 cp .env.example .env
 ```
 
-然后填写以下信息：
+Then fill in the following information:
 
 ```bash
 # MongoDB Atlas
 MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/ai-study-assistant
 
-# JWT (生成一个强随机密钥)
+# JWT (generate a strong random key)
 JWT_SECRET=your-super-secret-jwt-key
 
-# Google OAuth (从 Google Cloud Console 获取)
+# Google OAuth (obtain from Google Cloud Console)
 GOOGLE_CLIENT_ID=xxx.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=your-secret
 
@@ -64,143 +64,143 @@ R2_ACCESS_KEY_ID=your-key-id
 R2_SECRET_ACCESS_KEY=your-secret-key
 R2_BUCKET_NAME=ai-study-materials
 
-# 应用 URL
+# Application URL
 BASE_URL=http://localhost:3000
 ```
 
-### 2. 设置 MongoDB Atlas
+### 2. Set Up MongoDB Atlas
 
-1. 访问 https://www.mongodb.com/cloud/atlas
-2. 创建免费集群
-3. 创建数据库用户
-4. 添加 IP 地址到白名单 (0.0.0.0/0 用于开发)
-5. 获取连接字符串
+1. Visit https://www.mongodb.com/cloud/atlas
+2. Create a free cluster
+3. Create a database user
+4. Add IP address to whitelist (0.0.0.0/0 for development)
+5. Get the connection string
 
-### 3. 设置 Google OAuth
+### 3. Set Up Google OAuth
 
-1. 访问 https://console.cloud.google.com/
-2. 创建项目 → APIs & Services → Credentials
-3. 创建 OAuth 2.0 Client ID
-4. 应用类型：Web application
-5. 授权重定向 URI：
+1. Visit https://console.cloud.google.com/
+2. Create project → APIs & Services → Credentials
+3. Create OAuth 2.0 Client ID
+4. Application type: Web application
+5. Authorized redirect URIs:
    - `http://localhost:3000/api/auth/google/callback`
-6. 复制 Client ID 和 Client Secret
+6. Copy Client ID and Client Secret
 
-### 4. 设置 Cloudflare R2
+### 4. Set Up Cloudflare R2
 
-1. 登录 Cloudflare Dashboard
+1. Login to Cloudflare Dashboard
 2. R2 → Create bucket (`ai-study-materials`)
 3. Manage R2 API Tokens → Create API Token
-4. 复制 Account ID, Access Key ID, Secret Access Key
+4. Copy Account ID, Access Key ID, Secret Access Key
 
-### 5. 启动开发服务器
+### 5. Start Development Server
 
 ```bash
 npm run dev
 ```
 
-该命令会同时启动 Nuxt、RAG、Agent、Quiz 四个服务：
+This command will start all four services simultaneously:
 
-- Web 应用：http://localhost:3000
-- RAG 服务：http://localhost:8001
-- Agent 服务：http://localhost:8002
-- Quiz 服务：http://localhost:8003
+- Web application: http://localhost:3000
+- RAG service: http://localhost:8001
+- Agent service: http://localhost:8002
+- Quiz service: http://localhost:8003
 
-> 只想运行前端？使用 `npm run dev:web`。
+> Only want to run the frontend? Use `npm run dev:web`.
 
-## 🧪 测试流程
+## 🧪 Testing Workflow
 
-1. **测试登录**
-   - 点击 "Log In" 或 "Sign Up"
-   - 选择 "Continue with Google"
-   - 授权后应重定向到 `/chat`
+1. **Test Login**
+   - Click "Log In" or "Sign Up"
+   - Select "Continue with Google"
+   - After authorization, should redirect to `/chat`
 
-2. **测试对话**
-   - 创建新对话
-   - 发送消息
-   - 查看对话列表
+2. **Test Conversations**
+   - Create new conversation
+   - Send messages
+   - View conversation list
 
-3. **测试文件上传**
-   - 上传 PDF 文件
-   - 查看材料列表
-   - 删除材料
+3. **Test File Upload**
+   - Upload PDF files
+   - View materials list
+   - Delete materials
 
-## 🔍 关键变化
+## 🔍 Key Changes
 
-### 认证流程
+### Authentication Flow
 ```
-旧：Supabase Auth (OAuth)
+Old: Supabase Auth (OAuth)
   ↓
-新：Google OAuth → JWT Token → localStorage
+New: Google OAuth → JWT Token → localStorage
 ```
 
-### 数据库
+### Database
 ```
-旧：PostgreSQL (Supabase)
+Old: PostgreSQL (Supabase)
   ↓
-新：MongoDB (Atlas) + Mongoose
+New: MongoDB (Atlas) + Mongoose
 ```
 
-### 文件存储
+### File Storage
 ```
-旧：Supabase Storage
+Old: Supabase Storage
   ↓
-新：Cloudflare R2 (S3-compatible)
+New: Cloudflare R2 (S3-compatible)
 ```
 
-### 字段命名
+### Field Naming
 ```
-旧：snake_case (user_id, created_at)
+Old: snake_case (user_id, created_at)
   ↓
-新：camelCase (userId, createdAt)
+New: camelCase (userId, createdAt)
 ```
 
-## 📚 重要文件
+## 📚 Important Files
 
-- `server/models/` - Mongoose 数据模型
-- `server/utils/mongodb.ts` - MongoDB 连接
-- `server/utils/auth.ts` - JWT 认证
-- `server/utils/r2.ts` - Cloudflare R2 存储
-- `server/api/auth/` - 认证 API
-- `composables/useAuth.ts` - 前端认证逻辑
-- `MONGODB_MIGRATION.md` - 详细迁移文档
+- `server/models/` - Mongoose data models
+- `server/utils/mongodb.ts` - MongoDB connection
+- `server/utils/auth.ts` - JWT authentication
+- `server/utils/r2.ts` - Cloudflare R2 storage
+- `server/api/auth/` - Authentication API
+- `composables/useAuth.ts` - Frontend authentication logic
+- `MONGODB_MIGRATION.md` - Detailed migration documentation
 
-## ⚠️ 注意事项
+## ⚠️ Important Notes
 
-1. **开发环境**：确保所有环境变量都已配置
-2. **MongoDB Atlas**：免费层有存储限制 (512MB)
-3. **Cloudflare R2**：免费层每月 10GB 存储
-4. **JWT Secret**：生产环境务必使用强随机密钥
-5. **Google OAuth**：生产环境需更新 redirect URI
+1. **Development Environment**: Ensure all environment variables are configured
+2. **MongoDB Atlas**: Free tier has storage limit (512MB)
+3. **Cloudflare R2**: Free tier includes 10GB storage per month
+4. **JWT Secret**: Production environment must use a strong random key
+5. **Google OAuth**: Production environment needs updated redirect URI
 
-## 🐛 常见问题
+## 🐛 Common Issues
 
 ### 1. "Cannot connect to MongoDB"
-- 检查 `MONGODB_URI` 是否正确
-- 确认 IP 地址在 Atlas 白名单中
-- 验证数据库用户密码
+- Check if `MONGODB_URI` is correct
+- Confirm IP address is in Atlas whitelist
+- Verify database user password
 
 ### 2. "Google OAuth failed"
-- 确认 redirect URI 完全匹配
-- 检查 Client ID 和 Secret
-- 确保启用了 Google+ API
+- Confirm redirect URI matches exactly
+- Check Client ID and Secret
+- Ensure Google+ API is enabled
 
 ### 3. "Token expired"
-- 登出后重新登录
-- 检查 `JWT_SECRET` 是否一致
+- Logout and login again
+- Check if `JWT_SECRET` is consistent
 
 ### 4. "R2 upload failed"
-- 验证 R2 凭据
-- 确认 bucket 名称正确
-- 检查文件大小限制 (当前 10MB)
+- Verify R2 credentials
+- Confirm bucket name is correct
+- Check file size limit (currently 10MB)
 
-## 🎉 完成！
+## 🎉 Complete!
 
-项目已完全迁移到新的架构。查看 `MONGODB_MIGRATION.md` 了解更多详细信息。
+The project has been fully migrated to the new architecture. See `MONGODB_MIGRATION.md` for more detailed information.
 
-如有问题，请检查：
-1. 所有环境变量是否正确配置
-2. MongoDB、Google OAuth、R2 是否正确设置
-3. 查看浏览器控制台和服务器日志
+If you have issues, please check:
+1. All environment variables are correctly configured
+2. MongoDB, Google OAuth, R2 are properly set up
+3. Review browser console and server logs
 
-祝开发愉快！🚀
+Happy coding! 🚀

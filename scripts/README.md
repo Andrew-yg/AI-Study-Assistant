@@ -6,7 +6,7 @@ This folder contains utility scripts for development, testing, and service manag
 
 ### Service Management
 
-- **[manage-services.sh](./manage-services.sh)** - 管理所有 Python 微服务的启动、停止和重启
+- **[manage-services.sh](./manage-services.sh)** - Manage startup, shutdown, and restart of all Python microservices
   ```bash
   # Start all services
   ./scripts/manage-services.sh start
@@ -20,12 +20,12 @@ This folder contains utility scripts for development, testing, and service manag
 
 ### Development & Testing
 
-- **[diagnose_rag_pipeline.py](./diagnose_rag_pipeline.py)** - RAG 管道诊断工具
+- **[diagnose_rag_pipeline.py](./diagnose_rag_pipeline.py)** - RAG pipeline diagnostic tool
   ```bash
   python scripts/diagnose_rag_pipeline.py
   ```
 
-- **[test_vector_search.py](./test_vector_search.py)** - MongoDB Vector Search 测试脚本
+- **[test_vector_search.py](./test_vector_search.py)** - MongoDB Vector Search test script
   ```bash
   python scripts/test_vector_search.py
   ```
