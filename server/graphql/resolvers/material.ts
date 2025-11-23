@@ -34,8 +34,8 @@ export const materialResolvers = {
                 fileSize: mat.fileSize,
                 originalFilename: mat.originalFilename,
                 processingStatus: mat.processingStatus,
-                createdAt: mat.createdAt.toISOString(),
-                updatedAt: mat.updatedAt.toISOString(),
+                createdAt: mat.createdAt?.toISOString() || new Date().toISOString(),
+                updatedAt: mat.updatedAt?.toISOString() || new Date().toISOString(),
             }))
         },
 
@@ -65,8 +65,8 @@ export const materialResolvers = {
                 fileSize: material.fileSize,
                 originalFilename: material.originalFilename,
                 processingStatus: material.processingStatus,
-                createdAt: material.createdAt.toISOString(),
-                updatedAt: material.updatedAt.toISOString(),
+                createdAt: material.createdAt?.toISOString() || new Date().toISOString(),
+                updatedAt: material.updatedAt?.toISOString() || new Date().toISOString(),
             }
         },
     },

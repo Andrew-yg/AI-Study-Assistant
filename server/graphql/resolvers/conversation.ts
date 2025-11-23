@@ -16,8 +16,8 @@ export const conversationResolvers = {
                 id: conv._id.toString(),
                 userId: conv.userId.toString(),
                 title: conv.title,
-                createdAt: conv.createdAt.toISOString(),
-                updatedAt: conv.updatedAt.toISOString(),
+                createdAt: conv.createdAt?.toISOString() || new Date().toISOString(),
+                updatedAt: conv.updatedAt?.toISOString() || new Date().toISOString(),
             }))
         },
 
@@ -40,8 +40,8 @@ export const conversationResolvers = {
                 id: conversation._id.toString(),
                 userId: conversation.userId.toString(),
                 title: conversation.title,
-                createdAt: conversation.createdAt.toISOString(),
-                updatedAt: conversation.updatedAt.toISOString(),
+                createdAt: conversation.createdAt?.toISOString() || new Date().toISOString(),
+                updatedAt: conversation.updatedAt?.toISOString() || new Date().toISOString(),
             }
         },
     },
@@ -58,8 +58,8 @@ export const conversationResolvers = {
                 id: conversation._id.toString(),
                 userId: conversation.userId.toString(),
                 title: conversation.title,
-                createdAt: conversation.createdAt.toISOString(),
-                updatedAt: conversation.updatedAt.toISOString(),
+                createdAt: conversation.createdAt?.toISOString() || new Date().toISOString(),
+                updatedAt: conversation.updatedAt?.toISOString() || new Date().toISOString(),
             }
         },
 
@@ -83,8 +83,8 @@ export const conversationResolvers = {
                 id: conversation._id.toString(),
                 userId: conversation.userId.toString(),
                 title: conversation.title,
-                createdAt: conversation.createdAt.toISOString(),
-                updatedAt: conversation.updatedAt.toISOString(),
+                createdAt: conversation.createdAt?.toISOString() || new Date().toISOString(),
+                updatedAt: conversation.updatedAt?.toISOString() || new Date().toISOString(),
             }
         },
 
@@ -147,8 +147,8 @@ export const conversationResolvers = {
                 fileSize: mat.fileSize,
                 originalFilename: mat.originalFilename,
                 processingStatus: mat.processingStatus,
-                createdAt: mat.createdAt.toISOString(),
-                updatedAt: mat.updatedAt.toISOString(),
+                createdAt: mat.createdAt?.toISOString() || new Date().toISOString(),
+                updatedAt: mat.updatedAt?.toISOString() || new Date().toISOString(),
             }))
         },
     },

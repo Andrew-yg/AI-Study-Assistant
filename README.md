@@ -74,6 +74,7 @@ The platform leverages **Retrieval Augmented Generation (RAG)** to create a cont
 - [Nuxt 3](https://nuxt.com/) + [Vue 3](https://vuejs.org/)
 - [TypeScript](https://www.typescriptlang.org/)
 - [MongoDB Atlas](https://www.mongodb.com/atlas) + [Mongoose](https://mongoosejs.com/)
+- [GraphQL](https://graphql.org/) with [GraphQL Yoga](https://the-guild.dev/graphql/yoga-server) + [URQL](https://formidable.com/open-source/urql/)
 - [Cloudflare R2](https://developers.cloudflare.com/r2/)
 - [FastAPI](https://fastapi.tiangolo.com/) microservices (RAG, Agent, Quiz)
 - [OpenAI GPT-4](https://openai.com/) + optional [Brave Search API](https://brave.com/search/api/)
@@ -244,6 +245,28 @@ Playwright covers the critical chat ➜ telemetry ➜ quiz happy path. Extend `t
 - **Conversations & Messages**: CRUD endpoints under `/api/conversations` and `/api/messages`, plus `/api/agent/chat` for streaming replies.
 - **Materials**: `/api/materials`, `/api/upload` handle metadata + Cloudflare R2 operations.
 - **Practice quizzes**: `/api/practice-quizz` endpoints manage quiz creation, retrieval, and grading.
+- **GraphQL**: `POST /api/graphql` - unified GraphQL endpoint supporting queries and mutations for conversations, materials, and messages. GraphiQL playground available in development mode.
+
+### GraphQL API
+
+The platform now supports **GraphQL** alongside REST API, providing flexible data querying:
+
+- **Endpoint**: `POST /api/graphql`
+- **Playground**: `http://localhost:3000/api/graphql` (development only)
+- **Authentication**: Same JWT Bearer token as REST API
+
+**Available Queries:**
+- `conversations` - Fetch all user conversations
+- `conversation(id)` - Get single conversation with nested messages and materials
+- `materials(conversationId)` - Fetch learning materials
+- `messages(conversationId)` - Fetch conversation messages
+
+**Available Mutations:**
+- `createConversation(title)` - Create new conversation
+- `updateConversation(id, title)` - Update conversation title
+- `deleteConversation(id)` - Delete conversation
+
+**Demo**: Visit `/graphql-demo` to see GraphQL in action
 
 ### Python FastAPI Services
 
