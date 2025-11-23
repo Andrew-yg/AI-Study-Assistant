@@ -143,6 +143,7 @@ interface UploadCallbacks {
 
 const { user, token } = useAuth()
 const conversationsAPI = useConversations()
+const graphqlAPI = useGraphQL() // GraphQL integration
 const materials = ref<LearningMaterial[]>([])
 const conversations = ref<ConversationSummary[]>([])
 const loading = ref(true)
@@ -178,22 +179,95 @@ watch(selectedConversationFilter, async () => {
   await fetchMaterials()
 })
 
+// GraphQL Call #1: Fetch conversations using GraphQL
 const loadConversations = async () => {
   if (!token.value) return
   try {
-    conversations.value = await conversationsAPI.fetchConversations()
-  } catch (error) {
-    console.error('[Materials] Failed to load conversations:', error)
+    console.log('[Materials] Fetching conversations via GraphQL...')
+    const { data, error } = graphqlAPI.fetchConversations()
+    
+    // Watch for data changes
+    watch(data, (newData) => {
+      if (newData?.conversations) {
+        conversations.value = newData.conversations.map(conv => ({
+          id: conv.id,
+          title: conv.title
+        }))
+        console.log('[Materials] Loaded', conversations.value.length, 'conversations via GraphQL')
+      }
+    }, { immediate: true })
+
+    watch(error, (newError) => {
+      if (newError) {
+        console.error('[Materials] GraphQL error loading conversations:', newError)
+        // Fallback to REST if GraphQL fails
+        console.log('[Materials] Falling back to REST API...')
+        conversationsAPI.fetchConversations().then(data => {
+          conversations.value = data
+        })
+      }
+    }, { immediate: true })
+  } catch (err) {
+    console.error('[Materials] Failed to load conversations:', err)
   }
 }
 
+// GraphQL Call #2: Fetch materials using GraphQL
 const fetchMaterials = async () => {
   if (!user.value || !token.value) return
 
   try {
     loading.value = true
-    console.log('[Materials] Fetching materials...')
+    console.log('[Materials] Fetching materials via GraphQL...')
 
+    const conversationId = selectedConversationFilter.value === 'all' || selectedConversationFilter.value === 'unassigned'
+      ? ref<string | null>(null)
+      : ref<string | null>(selectedConversationFilter.value)
+
+    const { data, error } = graphqlAPI.fetchMaterials(
+      selectedConversationFilter.value === 'all' ? undefined : conversationId
+    )
+    
+    // Watch for data changes
+    watch(data, (newData) => {
+      if (newData?.materials) {
+        materials.value = newData.materials.map((item: any) => ({
+          id: item.id,
+          userId: item.userId,
+          conversationId: item.conversationId || null,
+          courseName: item.courseName,
+          materialType: item.materialType,
+          description: item.description,
+          filePath: item.filePath,
+          fileSize: item.fileSize,
+          originalFilename: item.originalFilename,
+          processingStatus: item.processingStatus || 'processed',
+          createdAt: item.createdAt,
+          updatedAt: item.updatedAt
+        }))
+        console.log('[Materials] Loaded', materials.value.length, 'materials via GraphQL')
+        loading.value = false
+      }
+    }, { immediate: true })
+
+    watch(error, (newError) => {
+      if (newError) {
+        console.error('[Materials] GraphQL error loading materials:', newError)
+        // Fallback to REST if GraphQL fails
+        console.log('[Materials] Falling back to REST API...')
+        fallbackToRestMaterials()
+      }
+    }, { immediate: true })
+  } catch (err) {
+    console.error('[Materials] Failed to fetch materials:', err)
+    loading.value = false
+    fallbackToRestMaterials()
+  }
+}
+
+// Fallback function to use REST API if GraphQL fails
+const fallbackToRestMaterials = async () => {
+  try {
     const query: Record<string, string> = {}
     if (selectedConversationFilter.value !== 'all') {
       query.conversationId = selectedConversationFilter.value === 'unassigned'
@@ -208,7 +282,6 @@ const fetchMaterials = async () => {
       query
     })
     
-    // Transform API response to match UI expectations
     materials.value = (response.data || []).map((item: any) => ({
       id: item.id,
       userId: item.userId,
@@ -222,9 +295,9 @@ const fetchMaterials = async () => {
       createdAt: item.createdAt,
       updatedAt: item.updatedAt
     }))
-    console.log('[Materials] Loaded', materials.value.length, 'materials')
+    console.log('[Materials] Loaded', materials.value.length, 'materials via REST API')
   } catch (error) {
-    console.error('[Materials] Failed to fetch materials:', error)
+    console.error('[Materials] REST API also failed:', error)
   } finally {
     loading.value = false
   }

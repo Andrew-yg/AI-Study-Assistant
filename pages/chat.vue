@@ -382,6 +382,7 @@ interface UploadCallbacks {
 const { user, token, signOut } = useAuth()
 const router = useRouter()
 const conversationsAPI = useConversations()
+const graphqlAPI = useGraphQL() // GraphQL integration
 const practiceQuizAPI = usePracticeQuiz()
 
 const chatSessions = ref<Conversation[]>([])
@@ -481,16 +482,58 @@ watch(streamingAssistantId, () => {
   scrollMessagesToBottom()
 })
 
+// GraphQL Call #3: Fetch conversations in chat page using GraphQL
 const loadSessions = async () => {
   try {
     loading.value = true
-    chatSessions.value = await conversationsAPI.fetchConversations()
-    if (chatSessions.value.length > 0) {
-      await selectSession(chatSessions.value[0].id)
-    }
+    console.log('[Chat] Fetching conversations via GraphQL...')
+    
+    const { data, error } = graphqlAPI.fetchConversations()
+    
+    // Watch for data changes
+    let dataHandled = false
+    watch(data, (newData) => {
+      if (newData?.conversations && !dataHandled) {
+        dataHandled = true
+        chatSessions.value = newData.conversations.map(conv => ({
+          id: conv.id,
+          userId: conv.userId,
+          title: conv.title,
+          createdAt: conv.createdAt,
+          updatedAt: conv.updatedAt
+        }))
+        console.log('[Chat] Loaded', chatSessions.value.length, 'conversations via GraphQL')
+        
+        // Auto-select first conversation
+        if (chatSessions.value.length > 0) {
+          selectSession(chatSessions.value[0].id)
+        }
+        loading.value = false
+      }
+    }, { immediate: true })
+
+    // Handle errors with fallback to REST
+    watch(error, (newError) => {
+      if (newError && !dataHandled) {
+        console.error('[Chat] GraphQL error loading conversations:', newError)
+        console.log('[Chat] Falling back to REST API...')
+        
+        // Fallback to REST API
+        conversationsAPI.fetchConversations().then(conversations => {
+          chatSessions.value = conversations
+          if (chatSessions.value.length > 0) {
+            selectSession(chatSessions.value[0].id)
+          }
+        }).catch(err => {
+          console.error('[Chat] Failed to load conversations:', err)
+        }).finally(() => {
+          loading.value = false
+        })
+      }
+    }, { immediate: true })
+    
   } catch (error) {
-    console.error('Failed to load conversations:', error)
-  } finally {
+    console.error('[Chat] Failed to load conversations:', error)
     loading.value = false
   }
 }
