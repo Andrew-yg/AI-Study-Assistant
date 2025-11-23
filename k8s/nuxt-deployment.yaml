@@ -15,10 +15,12 @@ spec:
       labels:
         app: web
     spec:
+      imagePullSecrets:
+        - name: gitlab-registry
       containers:
         - name: nuxt
-          image: ai-study-assistant-web:1.0.0
-          imagePullPolicy: Never
+          image: registry.gitlab.oit.duke.edu/yang.gao/ai-study-assistant/web:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 3000
           envFrom:

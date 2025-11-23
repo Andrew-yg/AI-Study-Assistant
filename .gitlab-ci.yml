@@ -1,0 +1,262 @@
+stages:
+  - lint
+  - build
+  - test
+  - package
+  - deploy
+  - cleanup
+
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_TAG
+    - when: never
+
+default:
+  image: node:20.19-bullseye
+  interruptible: true
+  cache:
+    key: ${CI_COMMIT_REF_SLUG}
+    paths:
+      - .npm/
+  before_script:
+    - npm config set cache $NPM_CONFIG_CACHE --global
+
+variables:
+  NPM_CONFIG_CACHE: .npm
+  NODE_OPTIONS: --max_old_space_size=4096
+  MONGODB_URI: mongodb://127.0.0.1:27017/ai-study-assistant
+  JWT_SECRET: ci-secret-key
+  GOOGLE_CLIENT_ID: ci-google-client-id.apps.googleusercontent.com
+  GOOGLE_CLIENT_SECRET: ci-google-client-secret
+  OPENAI_API_KEY: sk-test-ci
+  R2_ACCOUNT_ID: ci-r2-account
+  R2_ACCESS_KEY_ID: ci-r2-access
+  R2_SECRET_ACCESS_KEY: ci-r2-secret
+  R2_BUCKET_NAME: ci-r2-bucket
+  RAG_SERVICE_URL: http://localhost:8001
+  AGENT_SERVICE_URL: http://localhost:8002
+  QUIZ_SERVICE_URL: http://localhost:8003
+  BASE_URL: http://localhost:3000
+
+.typecheck_template: &typecheck_node
+  stage: lint
+  script:
+    - npm ci
+    - npx tsc --noEmit
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+      when: never
+    - when: on_success
+
+lint:typecheck:
+  <<: *typecheck_node
+
+nuxt-build:
+  stage: build
+  script:
+    - npm ci
+    - npm run build
+  artifacts:
+    when: always
+    expire_in: 2 days
+    paths:
+      - .output/
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+      when: never
+    - when: on_success
+
+playwright-e2e:
+  stage: test
+  image: mcr.microsoft.com/playwright:v1.48.2-jammy
+  services:
+    - name: mongo:6.0
+      alias: mongo
+  variables:
+    PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
+    MONGODB_URI: mongodb://mongo:27017/ai-study-assistant
+    E2E_PORT: 3100
+    E2E_BASE_URL: http://127.0.0.1:3100
+  cache:
+    key: ${CI_COMMIT_REF_SLUG}-playwright
+    paths:
+      - .npm/
+      - node_modules/.cache/ms-playwright/
+      - /root/.cache/ms-playwright/
+  script:
+    - npm ci
+    - npx playwright install --with-deps
+    - npm run test:e2e
+  artifacts:
+    when: always
+    expire_in: 14 days
+    paths:
+      - playwright-report
+      - test-results
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+      when: never
+    - when: on_success
+
+docker-build:
+  stage: package
+  image: docker:24.0.7
+  services:
+    - name: docker:24.0.7-dind
+      command: ["--storage-driver=overlay2"]
+  variables:
+    DOCKER_HOST: tcp://docker:2375
+    DOCKER_TLS_CERTDIR: ""
+    IMAGE_TAG: ${CI_COMMIT_SHORT_SHA}
+  needs:
+    - nuxt-build
+  before_script:
+    - apk add --no-cache bash curl
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
+  script:
+    - export REGISTRY=${CI_REGISTRY_IMAGE}
+    - export SHOULD_PUSH="false"
+    - if [ "$CI_COMMIT_BRANCH" = "$CI_DEFAULT_BRANCH" ] || [ -n "$CI_COMMIT_TAG" ]; then SHOULD_PUSH="true"; fi
+    - echo "Building Nuxt image ${REGISTRY}/web:${IMAGE_TAG}"
+    - docker build -f docker/nuxt/Dockerfile -t "${REGISTRY}/web:${IMAGE_TAG}" .
+    - |
+      for SERVICE in rag-service agent-service quiz-service; do
+        PORT=8001
+        if [ "$SERVICE" = "agent-service" ]; then PORT=8002; fi
+        if [ "$SERVICE" = "quiz-service" ]; then PORT=8003; fi
+        TARGET="${REGISTRY}/${SERVICE}:${IMAGE_TAG}"
+        echo "Building ${TARGET}"
+        docker build \
+          -f docker/python/Dockerfile \
+          --build-arg SERVICE="$SERVICE" \
+          --build-arg PORT="$PORT" \
+          -t "$TARGET" .
+      done
+    - |
+      if [ "$SHOULD_PUSH" = "true" ]; then
+        docker push "${REGISTRY}/web:${IMAGE_TAG}"
+        for SERVICE in rag-service agent-service quiz-service; do
+          docker push "${REGISTRY}/${SERVICE}:${IMAGE_TAG}"
+        done
+        docker tag "${REGISTRY}/web:${IMAGE_TAG}" "${REGISTRY}/web:latest"
+        docker push "${REGISTRY}/web:latest"
+        for SERVICE in rag-service agent-service quiz-service; do
+          docker tag "${REGISTRY}/${SERVICE}:${IMAGE_TAG}" "${REGISTRY}/${SERVICE}:latest"
+          docker push "${REGISTRY}/${SERVICE}:latest"
+        done
+      else
+        echo "Skipping registry push for non-default branch ${CI_COMMIT_REF_NAME}"
+      fi
+    - mkdir -p artifacts
+    - |
+      cat <<EOF > artifacts/image-tags.env
+      REGISTRY=${REGISTRY}
+      IMAGE_TAG=${IMAGE_TAG}
+      SHOULD_PUSH=${SHOULD_PUSH}
+      EOF
+  artifacts:
+    when: always
+    expire_in: 14 days
+    paths:
+      - artifacts/image-tags.env
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      when: on_success
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      when: on_success
+    - if: $CI_COMMIT_TAG
+      when: on_success
+    - when: manual
+      allow_failure: true
+
+k8s:deploy:
+  stage: deploy
+  image: bitnami/kubectl:1.30
+  needs:
+    - job: docker-build
+      artifacts: true
+  variables:
+    K8S_NAMESPACE: ai-study-assistant
+  before_script:
+    - |
+      if [ -z "$KUBECONFIG_DATA" ]; then
+        echo "KUBECONFIG_DATA variable is required for deployment"
+        exit 1
+      fi
+      mkdir -p ~/.kube
+      echo "$KUBECONFIG_DATA" | base64 -d > ~/.kube/config
+  script:
+    - source artifacts/image-tags.env
+    - export REGISTRY=${REGISTRY:-$CI_REGISTRY_IMAGE}
+    - export IMAGE_TAG=${IMAGE_TAG:-$CI_COMMIT_SHORT_SHA}
+    - kubectl config current-context
+    - kubectl apply -f k8s/namespace.yaml
+    - kubectl apply -f k8s/configmap.yaml
+    - if [ -f k8s/secrets.yaml ]; then kubectl apply -f k8s/secrets.yaml; else echo "Skipping secrets.yaml (not found)"; fi
+    - if [ -f k8s/registry-secret.yaml ]; then kubectl apply -f k8s/registry-secret.yaml; else echo "WARNING: registry-secret.yaml not found - image pulls may fail"; fi
+    - kubectl apply -f k8s/rag-deployment.yaml
+    - kubectl apply -f k8s/agent-deployment.yaml
+    - kubectl apply -f k8s/quiz-deployment.yaml
+    - kubectl apply -f k8s/nuxt-deployment.yaml
+    - kubectl apply -f k8s/ingress.yaml
+    - kubectl rollout status deployment/rag-service -n ${K8S_NAMESPACE}
+    - kubectl rollout status deployment/agent-service -n ${K8S_NAMESPACE}
+    - kubectl rollout status deployment/quiz-service -n ${K8S_NAMESPACE}
+    - kubectl rollout status deployment/web -n ${K8S_NAMESPACE}
+    - kubectl set image deployment/web nuxt="${REGISTRY}/web:${IMAGE_TAG}" -n ${K8S_NAMESPACE}
+    - kubectl set image deployment/rag-service rag="${REGISTRY}/rag-service:${IMAGE_TAG}" -n ${K8S_NAMESPACE}
+    - kubectl set image deployment/agent-service agent="${REGISTRY}/agent-service:${IMAGE_TAG}" -n ${K8S_NAMESPACE}
+    - kubectl set image deployment/quiz-service quiz="${REGISTRY}/quiz-service:${IMAGE_TAG}" -n ${K8S_NAMESPACE}
+    - kubectl rollout status deployment/web -n ${K8S_NAMESPACE}
+    - kubectl rollout status deployment/rag-service -n ${K8S_NAMESPACE}
+    - kubectl rollout status deployment/agent-service -n ${K8S_NAMESPACE}
+    - kubectl rollout status deployment/quiz-service -n ${K8S_NAMESPACE}
+  environment:
+    name: production
+    url: $PRODUCTION_BASE_URL
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE != "schedule"
+      when: manual
+    - when: never
+
+cleanup:registry:
+  stage: cleanup
+  image: alpine:3.20
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+  script:
+    - |
+      if [ -z "$REGISTRY_CLEANUP_TOKEN" ]; then
+        echo "REGISTRY_CLEANUP_TOKEN variable is required" >&2
+        exit 1
+      fi
+      apk add --no-cache curl jq
+      repos=$(curl --silent --header "PRIVATE-TOKEN: ${REGISTRY_CLEANUP_TOKEN}" "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/registry/repositories" | jq -r '.[].id')
+      for repo in $repos; do
+        echo "Cleaning registry repository $repo"
+        curl --silent --request DELETE \
+          --header "PRIVATE-TOKEN: ${REGISTRY_CLEANUP_TOKEN}" \
+          "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/registry/repositories/${repo}/tags?name_regex=.*&keep_n=20&older_than=30d"
+      done
+
+cleanup:k8s:
+  stage: cleanup
+  image: bitnami/kubectl:1.30
+  variables:
+    K8S_NAMESPACE: ai-study-assistant
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+  before_script:
+    - |
+      if [ -z "$KUBECONFIG_DATA" ]; then
+        echo "KUBECONFIG_DATA variable is required for cleanup"
+        exit 1
+      fi
+      mkdir -p ~/.kube
+      echo "$KUBECONFIG_DATA" | base64 -d > ~/.kube/config
+  script:
+    - kubectl config current-context
+    - kubectl delete pods --namespace ${K8S_NAMESPACE} --field-selector=status.phase==Succeeded || true
+    - kubectl delete jobs --namespace ${K8S_NAMESPACE} --field-selector=status.successful==1 || true

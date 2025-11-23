@@ -15,10 +15,12 @@ spec:
       labels:
         app: quiz-service
     spec:
+      imagePullSecrets:
+        - name: gitlab-registry
       containers:
         - name: quiz
-          image: ai-study-assistant-quiz:1.0.0
-          imagePullPolicy: Never
+          image: registry.gitlab.oit.duke.edu/yang.gao/ai-study-assistant/quiz-service:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 8003
           envFrom:

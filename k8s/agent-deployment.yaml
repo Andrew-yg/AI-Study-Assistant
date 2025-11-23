@@ -15,10 +15,12 @@ spec:
       labels:
         app: agent-service
     spec:
+      imagePullSecrets:
+        - name: gitlab-registry
       containers:
         - name: agent
-          image: ai-study-assistant-agent:1.0.0
-          imagePullPolicy: Never
+          image: registry.gitlab.oit.duke.edu/yang.gao/ai-study-assistant/agent-service:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 8002
           envFrom:

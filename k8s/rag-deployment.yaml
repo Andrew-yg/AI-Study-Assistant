@@ -15,10 +15,12 @@ spec:
       labels:
         app: rag-service
     spec:
+      imagePullSecrets:
+        - name: gitlab-registry
       containers:
         - name: rag
-          image: ai-study-assistant-rag:1.0.0
-          imagePullPolicy: Never
+          image: registry.gitlab.oit.duke.edu/yang.gao/ai-study-assistant/rag-service:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 8001
           envFrom:
